@@ -1,0 +1,37 @@
+[package]
+name = "thehand"
+version = "0.1.0"
+edition = "2021"
+authors = ["TheHand Contributors"]
+description = "Voice-activated transcription that types directly into your focused window"
+license = "MIT"
+
+[[bin]]
+name = "thehand"
+path = "src/main.rs"
+
+[dependencies]
+# Terminal UI
+ratatui = "0.26"
+crossterm = "0.27"
+
+# Audio capture
+cpal = "0.15"
+hound = "3.5"
+
+# Keyboard simulation
+enigo = "0.2"
+
+# Configuration
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Utilities
+chrono = "0.4"
+shellexpand = "3.1"
+
+[dev-dependencies]

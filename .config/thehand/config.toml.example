@@ -1,0 +1,50 @@
+# TheHand Configuration File
+# Copy this to ~/.config/thehand/config.toml and customize
+
+[whisper]
+# Path to whisper.cpp binary
+# Install whisper.cpp from: https://github.com/ggerganov/whisper.cpp
+binary_path = "/usr/local/bin/whisper"
+
+# Path to GGML model file
+# Download models from: https://huggingface.co/ggerganov/whisper.cpp
+# Recommended: ggml-base.bin for good balance of speed and accuracy
+model_path = "~/.local/share/thehand/models/ggml-base.bin"
+
+[audio]
+# Sample rate for recording (16kHz is whisper standard)
+sample_rate = 16000
+
+# RMS threshold for voice detection (0.0-1.0)
+# Increase if it triggers on background noise
+# Decrease if it doesn't detect your voice
+voice_threshold = 0.02
+
+# RMS threshold for silence detection (0.0-1.0)
+# Should be lower than voice_threshold
+silence_threshold = 0.01
+
+# Duration of silence before stopping recording (seconds)
+# Increase if it cuts you off too early
+# Decrease if it waits too long
+silence_duration = 2.0
+
+# Minimum speech duration to avoid false triggers (seconds)
+# Very short sounds will be ignored
+min_speech_duration = 0.5
+
+[ui]
+# Number of transcriptions to keep in history
+history_limit = 50
+
+# Log transcriptions to file for debugging
+log_to_file = true
+
+# Log file location
+log_path = "~/.local/share/thehand/transcriptions.log"
+
+[typing]
+# Delay between keystrokes when typing output (milliseconds)
+# Increase if characters are being dropped
+# Decrease for faster typing
+keystroke_delay = 10
