@@ -1,19 +1,19 @@
 use anyhow::Result;
-use enigo::{Enigo, Key, KeyboardControllable};
+use enigo::{Enigo, Key, Keyboard, Settings};
 use std::thread;
 use std::time::Duration;
 
 /// Type text into the focused window
 pub fn type_text(text: &str, keystroke_delay_ms: u64) -> Result<()> {
-    let mut enigo = Enigo::new();
+    let mut enigo = Enigo::new(&Settings::default())?;
     let delay = Duration::from_millis(keystroke_delay_ms);
 
     for c in text.chars() {
         // Type the character
         if c == '\n' {
-            enigo.key_click(Key::Return);
+            enigo.key(Key::Return, enigo::Direction::Click)?;
         } else {
-            enigo.key_sequence(&c.to_string());
+            enigo.text(&c.to_string())?;
         }
 
         // Small delay between keystrokes for reliability

@@ -9,7 +9,7 @@ use anyhow::Result;
 use audio::{AudioCapture, AudioEvent};
 use config::Config;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -93,22 +93,33 @@ fn main_loop(
         // Handle keyboard events (non-blocking)
         if event::poll(Duration::from_millis(50))? {
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') | KeyCode::Char('Q') => {
-                        app.should_quit = true;
-                        break;
+                // Quit on Esc, Ctrl+Q, or F12
+                if matches!(key.code, KeyCode::Esc | KeyCode::F(12))
+                    || (matches!(key.code, KeyCode::Char('q') | KeyCode::Char('Q'))
+                        && key.modifiers.contains(KeyModifiers::CONTROL))
+                {
+                    app.should_quit = true;
+                    break;
+                }
+
+                // Toggle mute on Ctrl+M or F1
+                if matches!(key.code, KeyCode::F(1))
+                    || (matches!(key.code, KeyCode::Char('m') | KeyCode::Char('M'))
+                        && key.modifiers.contains(KeyModifiers::CONTROL))
+                {
+                    app.toggle_mute();
+                }
+
+                // Cancel recording on Ctrl+C or F2
+                if matches!(key.code, KeyCode::F(2))
+                    || (matches!(key.code, KeyCode::Char('c') | KeyCode::Char('C'))
+                        && key.modifiers.contains(KeyModifiers::CONTROL))
+                {
+                    if audio.is_recording() {
+                        audio.cancel_recording();
+                        app.set_state(AppState::Idle);
+                        app.clear_current_text();
                     }
-                    KeyCode::Char('m') | KeyCode::Char('M') => {
-                        app.toggle_mute();
-                    }
-                    KeyCode::Char('c') | KeyCode::Char('C') => {
-                        if audio.is_recording() {
-                            audio.cancel_recording();
-                            app.set_state(AppState::Idle);
-                            app.clear_current_text();
-                        }
-                    }
-                    _ => {}
                 }
             }
         }

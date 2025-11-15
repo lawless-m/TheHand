@@ -1,6 +1,5 @@
 use crate::state::AppStateContainer;
 use ratatui::{
-    backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
@@ -9,7 +8,7 @@ use ratatui::{
 };
 
 /// Render the UI
-pub fn render<B: Backend>(frame: &mut Frame, app: &AppStateContainer) {
+pub fn render(frame: &mut Frame, app: &AppStateContainer) {
     let size = frame.size();
 
     // Main layout
@@ -31,7 +30,7 @@ pub fn render<B: Backend>(frame: &mut Frame, app: &AppStateContainer) {
 }
 
 /// Render status line with VU meter
-fn render_status<B: Backend>(frame: &mut Frame, area: Rect, app: &AppStateContainer) {
+fn render_status(frame: &mut Frame, area: Rect, app: &AppStateContainer) {
     let state_color = app.state.color();
     let state_text = app.state.display_text();
 
@@ -70,7 +69,7 @@ fn render_status<B: Backend>(frame: &mut Frame, area: Rect, app: &AppStateContai
 }
 
 /// Render transcription history
-fn render_history<B: Backend>(frame: &mut Frame, area: Rect, app: &AppStateContainer) {
+fn render_history(frame: &mut Frame, area: Rect, app: &AppStateContainer) {
     let items: Vec<ListItem> = app
         .history
         .iter()
@@ -89,7 +88,7 @@ fn render_history<B: Backend>(frame: &mut Frame, area: Rect, app: &AppStateConta
 }
 
 /// Render current text being processed
-fn render_current<B: Backend>(frame: &mut Frame, area: Rect, app: &AppStateContainer) {
+fn render_current(frame: &mut Frame, area: Rect, app: &AppStateContainer) {
     let current_text = if app.current_text.is_empty() {
         "_".to_string()
     } else {
@@ -104,14 +103,14 @@ fn render_current<B: Backend>(frame: &mut Frame, area: Rect, app: &AppStateConta
 }
 
 /// Render control hints
-fn render_controls<B: Backend>(frame: &mut Frame, area: Rect) {
+fn render_controls(frame: &mut Frame, area: Rect) {
     let controls = vec![
-        Span::styled("[M]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-        Span::raw("ute  "),
-        Span::styled("[C]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-        Span::raw("ancel  "),
-        Span::styled("[Q]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-        Span::raw("uit"),
+        Span::styled("[F1]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+        Span::raw("Mute  "),
+        Span::styled("[F2]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+        Span::raw("Cancel  "),
+        Span::styled("[F12]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+        Span::raw("Quit"),
     ];
 
     let controls_line = Line::from(controls);
