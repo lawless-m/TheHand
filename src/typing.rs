@@ -22,5 +22,8 @@ pub fn type_text(text: &str, keystroke_delay_ms: u64) -> Result<()> {
         }
     }
 
+    // Append a trailing space for convenience
+    enigo.text(" ")?;
+
     Ok(())
 }
