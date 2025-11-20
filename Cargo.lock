@@ -1136,6 +1136,7 @@ dependencies = [
  "crossterm",
  "enigo",
  "hound",
+ "libc",
  "ratatui",
  "serde",
  "shellexpand",

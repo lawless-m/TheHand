@@ -1,5 +1,6 @@
 use chrono::{DateTime, Local};
 use std::collections::VecDeque;
+use crate::audio::DeviceInfo;
 
 /// Application state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -14,6 +15,8 @@ pub enum AppState {
     Typing,
     /// Voice detection disabled
     Muted,
+    /// Selecting audio input device
+    DeviceSelection,
 }
 
 impl AppState {
@@ -24,6 +27,7 @@ impl AppState {
             AppState::Transcribing => "Transcribing...",
             AppState::Typing => "Sent ✓",
             AppState::Muted => "MUTED",
+            AppState::DeviceSelection => "Select Audio Device",
         }
     }
 
@@ -35,6 +39,7 @@ impl AppState {
             AppState::Transcribing => Color::Yellow,
             AppState::Typing => Color::Green,
             AppState::Muted => Color::DarkGray,
+            AppState::DeviceSelection => Color::Cyan,
         }
     }
 }
@@ -68,6 +73,12 @@ pub struct AppStateContainer {
     pub error_message: Option<String>,
     pub should_quit: bool,
     pub history_limit: usize,
+    pub available_devices: Vec<DeviceInfo>,
+    pub selected_device_index: usize,
+    pub current_device_index: Option<usize>,
+    pub preview_level: f32,
+    pub current_device_name: String,
+    pub current_raw_device_name: Option<String>, // Raw ALSA device name for manually-added devices
 }
 
 impl AppStateContainer {
@@ -80,6 +91,12 @@ impl AppStateContainer {
             error_message: None,
             should_quit: false,
             history_limit,
+            available_devices: Vec::new(),
+            selected_device_index: 0,
+            current_device_index: None,
+            preview_level: 0.0,
+            current_device_name: String::from("Default"),
+            current_raw_device_name: None,
         }
     }
 
@@ -135,5 +152,37 @@ impl AppStateContainer {
     /// Clear current text
     pub fn clear_current_text(&mut self) {
         self.current_text.clear();
+    }
+
+    /// Set available audio devices
+    pub fn set_available_devices(&mut self, devices: Vec<DeviceInfo>) {
+        self.available_devices = devices;
+        self.selected_device_index = 0;
+    }
+
+    /// Move selection up in device list
+    pub fn select_previous_device(&mut self) {
+        if !self.available_devices.is_empty() && self.selected_device_index > 0 {
+            self.selected_device_index -= 1;
+        }
+    }
+
+    /// Move selection down in device list
+    pub fn select_next_device(&mut self) {
+        if self.selected_device_index + 1 < self.available_devices.len() {
+            self.selected_device_index += 1;
+        }
+    }
+
+    /// Get the currently selected device index
+    pub fn get_selected_device_index(&self) -> Option<usize> {
+        self.available_devices
+            .get(self.selected_device_index)
+            .map(|d| d.index)
+    }
+
+    /// Update preview audio level
+    pub fn update_preview_level(&mut self, level: f32) {
+        self.preview_level = level.clamp(0.0, 1.0);
     }
 }
