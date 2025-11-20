@@ -279,24 +279,36 @@ fn main_loop(
                 &audio_path,
             ) {
                 Ok(text) => {
-                    app.set_current_text(text.clone());
-                    app.set_state(AppState::Typing);
+                    // Filter out common Whisper hallucinations
+                    let trimmed = text.trim();
+                    let is_spurious = trimmed == "Thank you."
+                        || trimmed == "Thank you"
+                        || trimmed == "you"
+                        || trimmed == "You";
 
-                    // Type the text
-                    if let Err(e) = typing::type_text(&text, config.typing.keystroke_delay) {
-                        app.set_error(format!("Failed to type text: {}", e));
+                    if is_spurious {
+                        // Ignore spurious hallucinations, just return to idle
+                        app.set_state(AppState::Idle);
                     } else {
-                        // Add to history
-                        app.add_to_history(text.clone());
+                        app.set_current_text(text.clone());
+                        app.set_state(AppState::Typing);
 
-                        // Log to file if enabled
-                        if config.ui.log_to_file {
-                            let _ = log_transcription(&config.ui.log_path, &text);
+                        // Type the text
+                        if let Err(e) = typing::type_text(&text, config.typing.keystroke_delay) {
+                            app.set_error(format!("Failed to type text: {}", e));
+                        } else {
+                            // Add to history
+                            app.add_to_history(text.clone());
+
+                            // Log to file if enabled
+                            if config.ui.log_to_file {
+                                let _ = log_transcription(&config.ui.log_path, &text);
+                            }
                         }
-                    }
 
-                    app.set_state(AppState::Idle);
-                    app.clear_current_text();
+                        app.set_state(AppState::Idle);
+                        app.clear_current_text();
+                    }
                 }
                 Err(e) => {
                     app.set_error(format!("Transcription failed: {}", e));
