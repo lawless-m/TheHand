@@ -13,10 +13,17 @@ pub struct Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WhisperConfig {
-    /// Path to whisper.cpp binary
+    /// Path to whisper.cpp binary (used as fallback if server unavailable)
     pub binary_path: String,
-    /// Path to GGML model file
+    /// Path to GGML model file (used as fallback if server unavailable)
     pub model_path: String,
+    /// Whisper server URL (will auto-detect and use if available)
+    #[serde(default = "default_server_url")]
+    pub server_url: String,
+}
+
+fn default_server_url() -> String {
+    "http://localhost:8080".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,6 +62,7 @@ impl Default for Config {
             whisper: WhisperConfig {
                 binary_path: "/usr/local/bin/whisper".to_string(),
                 model_path: "~/.local/share/thehand/models/ggml-base.bin".to_string(),
+                server_url: default_server_url(),
             },
             audio: AudioConfig {
                 sample_rate: 16000,
@@ -164,7 +172,7 @@ impl Config {
     fn config_path() -> Result<PathBuf> {
         let home = std::env::var("HOME")
             .context("HOME environment variable not set")?;
-        Ok(PathBuf::from(home).join(".config/thehand/config.toml"))
+        Ok(PathBuf::from(home).join(".config/thehand/prefs.toml"))
     }
 
     /// Expand ~ to home directory

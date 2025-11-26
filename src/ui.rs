@@ -24,15 +24,13 @@ pub fn render(frame: &mut Frame, app: &AppStateContainer) {
         .constraints([
             Constraint::Length(3), // Status + VU meter
             Constraint::Min(10),   // History
-            Constraint::Length(3), // Current text
             Constraint::Length(3), // Controls
         ])
         .split(size);
 
     render_status(frame, chunks[0], app);
     render_history(frame, chunks[1], app);
-    render_current(frame, chunks[2], app);
-    render_controls(frame, chunks[3]);
+    render_controls(frame, chunks[2]);
 }
 
 /// Render status line with VU meter
@@ -93,21 +91,6 @@ fn render_history(frame: &mut Frame, area: Rect, app: &AppStateContainer) {
     frame.render_widget(history_list, area);
 }
 
-/// Render current text being processed
-fn render_current(frame: &mut Frame, area: Rect, app: &AppStateContainer) {
-    let current_text = if app.current_text.is_empty() {
-        "_".to_string()
-    } else {
-        app.current_text.clone()
-    };
-
-    let current = Paragraph::new(current_text)
-        .style(Style::default().fg(Color::Cyan))
-        .block(Block::default().borders(Borders::ALL).title("Current"));
-
-    frame.render_widget(current, area);
-}
-
 /// Render control hints
 fn render_controls(frame: &mut Frame, area: Rect) {
     let controls = vec![
@@ -117,6 +100,8 @@ fn render_controls(frame: &mut Frame, area: Rect) {
         Span::raw("Cancel  "),
         Span::styled("[F3]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
         Span::raw("Device  "),
+        Span::styled("[F4]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+        Span::raw("Reload  "),
         Span::styled("[F12]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
         Span::raw("Quit"),
     ];

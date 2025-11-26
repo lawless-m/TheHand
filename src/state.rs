@@ -1,6 +1,7 @@
 use chrono::{DateTime, Local};
 use std::collections::VecDeque;
 use crate::audio::DeviceInfo;
+use crate::commands_config::VoiceCommand;
 
 /// Application state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,7 +69,6 @@ impl HistoryEntry {
 pub struct AppStateContainer {
     pub state: AppState,
     pub history: VecDeque<HistoryEntry>,
-    pub current_text: String,
     pub audio_level: f32,
     pub error_message: Option<String>,
     pub should_quit: bool,
@@ -79,6 +79,10 @@ pub struct AppStateContainer {
     pub preview_level: f32,
     pub current_device_name: String,
     pub current_raw_device_name: Option<String>, // Raw ALSA device name for manually-added devices
+    pub wake_word: String,
+    pub voice_commands: Vec<VoiceCommand>,
+    pub filtered_phrases: Vec<String>,
+    pub last_typed_length: usize, // Length of last typed text for undo
 }
 
 impl AppStateContainer {
@@ -86,7 +90,6 @@ impl AppStateContainer {
         Self {
             state: AppState::Idle,
             history: VecDeque::new(),
-            current_text: String::new(),
             audio_level: 0.0,
             error_message: None,
             should_quit: false,
@@ -97,6 +100,10 @@ impl AppStateContainer {
             preview_level: 0.0,
             current_device_name: String::from("Default"),
             current_raw_device_name: None,
+            wake_word: String::new(),
+            voice_commands: Vec::new(),
+            filtered_phrases: Vec::new(),
+            last_typed_length: 0,
         }
     }
 
@@ -142,16 +149,6 @@ impl AppStateContainer {
     /// Update audio level (0.0 - 1.0)
     pub fn update_audio_level(&mut self, level: f32) {
         self.audio_level = level.clamp(0.0, 1.0);
-    }
-
-    /// Set current text being processed
-    pub fn set_current_text(&mut self, text: String) {
-        self.current_text = text;
-    }
-
-    /// Clear current text
-    pub fn clear_current_text(&mut self) {
-        self.current_text.clear();
     }
 
     /// Set available audio devices

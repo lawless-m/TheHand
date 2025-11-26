@@ -2,14 +2,21 @@
 # Copy this to ~/.config/thehand/config.toml and customize
 
 [whisper]
-# Path to whisper.cpp binary
+# Path to whisper.cpp binary (fallback if server not available)
 # Install whisper.cpp from: https://github.com/ggerganov/whisper.cpp
 binary_path = "/usr/local/bin/whisper"
 
-# Path to GGML model file
+# Path to GGML model file (fallback if server not available)
 # Download models from: https://huggingface.co/ggerganov/whisper.cpp
 # Recommended: ggml-base.bin for good balance of speed and accuracy
 model_path = "~/.local/share/thehand/models/ggml-base.bin"
+
+# Whisper server URL (TheHand will auto-detect and use if running)
+# Server mode is MUCH FASTER - keeps model in GPU memory
+# Start whisper-server separately:
+#   ~/whisper.cpp/build/bin/whisper-server -m ~/whisper.cpp/models/ggml-base.bin --port 8080
+# If server is not running, TheHand automatically falls back to CLI mode
+server_url = "http://localhost:8080"
 
 [audio]
 # Sample rate for recording (16kHz is whisper standard)

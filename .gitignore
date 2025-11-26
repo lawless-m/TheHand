@@ -18,4 +18,4 @@
 Thumbs.db
 
 # Local configuration (users should create their own)
-config.toml
+prefs.toml

@@ -122,12 +122,12 @@ mkdir -p ~/.config/thehand
 
 2. Copy example config:
 ```bash
-cp .config/thehand/config.toml.example ~/.config/thehand/config.toml
+cp .config/thehand/prefs.toml.example ~/.config/thehand/prefs.toml
 ```
 
 3. Edit the config file:
 ```bash
-nano ~/.config/thehand/config.toml
+nano ~/.config/thehand/prefs.toml
 ```
 
 At minimum, verify/update these paths:
@@ -280,7 +280,7 @@ thehand/
 ├── README.md
 └── .config/
     └── thehand/
-        └── config.toml.example
+        └── prefs.toml.example
 ```
 
 ### Building for Development

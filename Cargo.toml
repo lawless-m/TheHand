@@ -35,4 +35,8 @@ chrono = "0.4"
 shellexpand = "3.1"
 libc = "0.2"
 
+# HTTP client for whisper server
+reqwest = { version = "0.12", features = ["blocking", "multipart", "json"] }
+serde_json = "1.0"
+
 [dev-dependencies]
