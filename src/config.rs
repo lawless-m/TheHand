@@ -134,24 +134,31 @@ impl Config {
 
     /// Validate configuration values
     pub fn validate(&self) -> Result<()> {
-        // Check if whisper binary exists
-        let whisper_path = PathBuf::from(&self.whisper.binary_path);
-        if !whisper_path.exists() {
-            anyhow::bail!(
-                "Whisper binary not found at {:?}\n\
-                Please install whisper.cpp and update the binary_path in your config.",
-                whisper_path
-            );
-        }
+        // If using a remote server (not localhost), skip binary/model validation
+        // They're only needed as fallback
+        let using_remote_server = !self.whisper.server_url.contains("localhost")
+            && !self.whisper.server_url.contains("127.0.0.1");
 
-        // Check if model file exists
-        let model_path = PathBuf::from(&self.whisper.model_path);
-        if !model_path.exists() {
-            anyhow::bail!(
-                "Model file not found at {:?}\n\
-                Please download a GGML model file and update the model_path in your config.",
-                model_path
-            );
+        if !using_remote_server {
+            // Check if whisper binary exists (only if not using remote server)
+            let whisper_path = PathBuf::from(&self.whisper.binary_path);
+            if !whisper_path.exists() {
+                anyhow::bail!(
+                    "Whisper binary not found at {:?}\n\
+                    Please install whisper.cpp and update the binary_path in your config.",
+                    whisper_path
+                );
+            }
+
+            // Check if model file exists (only if not using remote server)
+            let model_path = PathBuf::from(&self.whisper.model_path);
+            if !model_path.exists() {
+                anyhow::bail!(
+                    "Model file not found at {:?}\n\
+                    Please download a GGML model file and update the model_path in your config.",
+                    model_path
+                );
+            }
         }
 
         // Validate thresholds

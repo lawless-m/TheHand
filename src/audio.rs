@@ -734,11 +734,14 @@ impl AudioCapture {
     }
 
     /// Get audio stream configuration
-    fn get_config(device: &Device, _requested_sample_rate: u32) -> Result<StreamConfig> {
+    fn get_config(device: &Device, requested_sample_rate: u32) -> Result<StreamConfig> {
         let supported_config = device.default_input_config()
             .context("Failed to get default input config")?;
 
         let mut config = supported_config.config();
+
+        // Use requested sample rate (16kHz for Whisper)
+        config.sample_rate = cpal::SampleRate(requested_sample_rate);
 
         // Check if this is a USB device that might need mono
         // Force mono for hw:/plughw: devices (not pipewire/default)
