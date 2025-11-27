@@ -1,0 +1,404 @@
+/**
+ * WhisperWidget Styles
+ *
+ * CSS Custom Properties for theming:
+ *   --ww-bg-primary      Background color (default: #1a1a2e)
+ *   --ww-bg-secondary    Secondary background (default: #16213e)
+ *   --ww-bg-visualizer   Visualizer background (default: #1a1a2e)
+ *   --ww-text-primary    Primary text color (default: #eaeaea)
+ *   --ww-text-secondary  Secondary text color (default: #a0a0a0)
+ *   --ww-accent          Accent color (default: #e94560)
+ *   --ww-accent-hover    Accent hover color (default: #ff6b6b)
+ *   --ww-success         Success color (default: #4ade80)
+ *   --ww-recording       Recording indicator color (default: #ef4444)
+ *   --ww-border-radius   Border radius (default: 0.5rem)
+ */
+
+.whisper-widget {
+    --ww-bg-primary: #1a1a2e;
+    --ww-bg-secondary: #16213e;
+    --ww-bg-visualizer: #1a1a2e;
+    --ww-text-primary: #eaeaea;
+    --ww-text-secondary: #a0a0a0;
+    --ww-accent: #e94560;
+    --ww-accent-hover: #ff6b6b;
+    --ww-success: #4ade80;
+    --ww-recording: #ef4444;
+    --ww-border-radius: 0.5rem;
+
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: var(--ww-bg-primary);
+    color: var(--ww-text-primary);
+    border-radius: var(--ww-border-radius);
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.whisper-widget *,
+.whisper-widget *::before,
+.whisper-widget *::after {
+    box-sizing: border-box;
+}
+
+/* Visualizer Section */
+.ww-visualizer-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.ww-visualizer {
+    width: 100%;
+    height: 80px;
+    background: var(--ww-bg-visualizer);
+    border-radius: var(--ww-border-radius);
+}
+
+.ww-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.ww-timer {
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 1.25rem;
+    color: var(--ww-text-primary);
+    min-width: 60px;
+    text-align: center;
+}
+
+/* Record Button */
+.ww-record-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid var(--ww-accent);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.ww-record-btn:hover {
+    background: rgba(233, 69, 96, 0.1);
+    transform: scale(1.05);
+}
+
+.ww-record-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.3);
+}
+
+.ww-record-icon {
+    width: 28px;
+    height: 28px;
+    background: var(--ww-accent);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.ww-record-btn.ww-recording {
+    border-color: var(--ww-recording);
+    animation: ww-pulse 1.5s infinite;
+}
+
+.ww-record-btn.ww-recording .ww-record-icon {
+    background: var(--ww-recording);
+    border-radius: 4px;
+    width: 22px;
+    height: 22px;
+}
+
+@keyframes ww-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+}
+
+/* Status */
+.ww-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--ww-text-secondary);
+    min-width: 100px;
+}
+
+.ww-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ww-text-secondary);
+    flex-shrink: 0;
+}
+
+.ww-status-dot.ww-status-ready {
+    background: var(--ww-success);
+}
+
+.ww-status-dot.ww-status-recording {
+    background: var(--ww-recording);
+    animation: ww-blink 0.8s infinite;
+}
+
+.ww-status-dot.ww-status-processing {
+    background: #fbbf24;
+    animation: ww-blink 0.5s infinite;
+}
+
+.ww-status-dot.ww-status-error {
+    background: var(--ww-recording);
+}
+
+@keyframes ww-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Output Section */
+.ww-output-section {
+    background: var(--ww-bg-secondary);
+    border-radius: var(--ww-border-radius);
+    padding: 0.75rem;
+}
+
+.ww-output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.ww-output-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ww-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ww-copy-btn {
+    background: transparent;
+    border: 1px solid var(--ww-text-secondary);
+    color: var(--ww-text-secondary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.ww-copy-btn:hover {
+    border-color: var(--ww-accent);
+    color: var(--ww-accent);
+}
+
+.ww-copy-btn.ww-copied {
+    border-color: var(--ww-success);
+    color: var(--ww-success);
+}
+
+.ww-output {
+    min-height: 60px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.ww-output[data-empty="true"] {
+    color: var(--ww-text-secondary);
+    font-style: italic;
+}
+
+/* History Section */
+.ww-history-section {
+    margin-top: 1rem;
+    background: var(--ww-bg-secondary);
+    border-radius: var(--ww-border-radius);
+    padding: 0.75rem;
+}
+
+.ww-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.ww-history-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ww-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ww-clear-btn {
+    background: transparent;
+    border: none;
+    color: var(--ww-text-secondary);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0;
+    transition: color 0.2s ease;
+}
+
+.ww-clear-btn:hover {
+    color: var(--ww-accent);
+}
+
+.ww-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.ww-history-item {
+    background: var(--ww-bg-primary);
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.ww-history-text {
+    flex: 1;
+    word-break: break-word;
+}
+
+.ww-history-time {
+    color: var(--ww-text-secondary);
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+/* Scrollbar styling */
+.ww-history-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ww-history-list::-webkit-scrollbar-track {
+    background: var(--ww-bg-primary);
+    border-radius: 3px;
+}
+
+.ww-history-list::-webkit-scrollbar-thumb {
+    background: var(--ww-text-secondary);
+    border-radius: 3px;
+}
+
+.ww-history-list::-webkit-scrollbar-thumb:hover {
+    background: var(--ww-accent);
+}
+
+/* Compact variant */
+.whisper-widget.ww-compact .ww-visualizer {
+    height: 50px;
+}
+
+.whisper-widget.ww-compact .ww-record-btn {
+    width: 50px;
+    height: 50px;
+}
+
+.whisper-widget.ww-compact .ww-record-icon {
+    width: 22px;
+    height: 22px;
+}
+
+.whisper-widget.ww-compact .ww-timer {
+    font-size: 1rem;
+}
+
+/* Minimal variant - just the button */
+.whisper-widget.ww-minimal .ww-visualizer-section {
+    margin-bottom: 0;
+}
+
+.whisper-widget.ww-minimal .ww-visualizer,
+.whisper-widget.ww-minimal .ww-timer,
+.whisper-widget.ww-minimal .ww-status,
+.whisper-widget.ww-minimal .ww-output-section,
+.whisper-widget.ww-minimal .ww-history-section {
+    display: none !important;
+}
+
+/* Light theme variant */
+.whisper-widget.ww-light {
+    --ww-bg-primary: #f5f5f5;
+    --ww-bg-secondary: #e5e5e5;
+    --ww-bg-visualizer: #e5e5e5;
+    --ww-text-primary: #1a1a1a;
+    --ww-text-secondary: #666666;
+}
+
+/* Inline variant - horizontal layout */
+.whisper-widget.ww-inline {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem;
+}
+
+.whisper-widget.ww-inline .ww-visualizer-section {
+    flex-direction: row;
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+.whisper-widget.ww-inline .ww-visualizer {
+    width: 120px;
+    height: 40px;
+}
+
+.whisper-widget.ww-inline .ww-record-btn {
+    width: 40px;
+    height: 40px;
+    border-width: 2px;
+}
+
+.whisper-widget.ww-inline .ww-record-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.whisper-widget.ww-inline .ww-record-btn.ww-recording .ww-record-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.whisper-widget.ww-inline .ww-timer {
+    font-size: 0.875rem;
+    min-width: 40px;
+}
+
+.whisper-widget.ww-inline .ww-status {
+    display: none;
+}
+
+.whisper-widget.ww-inline .ww-output-section {
+    flex: 1;
+    min-width: 0;
+}
+
+.whisper-widget.ww-inline .ww-output {
+    min-height: auto;
+    font-size: 0.875rem;
+}
+
+.whisper-widget.ww-inline .ww-history-section {
+    display: none;
+}

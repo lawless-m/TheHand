@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhisperWidget Demo</title>
+    <link rel="stylesheet" href="whisper-widget.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #eaeaea;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #a0a0a0;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+            color: #e94560;
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            margin: 1.5rem 0 0.75rem;
+            color: #a0a0a0;
+        }
+
+        .demo-section {
+            background: #0f3460;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .demo-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #a0a0a0;
+            margin-bottom: 1rem;
+        }
+
+        /* Demo widget containers */
+        #demo-default {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        #demo-compact {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        #demo-inline {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        #demo-light {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        #demo-minimal {
+            width: 80px;
+            margin: 0 auto;
+        }
+
+        /* Event log */
+        .event-log {
+            background: #1a1a2e;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.8rem;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .event-log .event {
+            margin-bottom: 0.25rem;
+            color: #4ade80;
+        }
+
+        .event-log .event.error {
+            color: #ef4444;
+        }
+
+        /* Code blocks */
+        pre {
+            background: #1a1a2e;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        code {
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+
+        .highlight {
+            color: #e94560;
+        }
+
+        .string {
+            color: #4ade80;
+        }
+
+        .comment {
+            color: #6b7280;
+        }
+
+        /* Grid for side-by-side demos */
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #0f3460;
+            color: #a0a0a0;
+            font-size: 0.875rem;
+        }
+
+        footer a {
+            color: #e94560;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>WhisperWidget</h1>
+            <p class="subtitle">A modular audio transcription component for web applications</p>
+        </header>
+
+        <h2>Quick Start</h2>
+        <pre><code><span class="comment">&lt;!-- Include the CSS and JS --&gt;</span>
+&lt;link rel=<span class="string">"stylesheet"</span> href=<span class="string">"whisper-widget.css"</span>&gt;
+&lt;script src=<span class="string">"whisper-widget.js"</span>&gt;&lt;/script&gt;
+
+<span class="comment">&lt;!-- Create a container --&gt;</span>
+&lt;div id=<span class="string">"my-widget"</span>&gt;&lt;/div&gt;
+
+<span class="comment">&lt;!-- Initialize --&gt;</span>
+&lt;script&gt;
+  <span class="highlight">const</span> widget = <span class="highlight">new</span> WhisperWidget(<span class="string">'#my-widget'</span>, {
+    serverUrl: <span class="string">'/whisper/inference'</span>,
+    onTranscription: (text) =&gt; console.log(text)
+  });
+&lt;/script&gt;</code></pre>
+
+        <h2>Demos</h2>
+
+        <h3>Default</h3>
+        <div class="demo-section">
+            <p class="demo-label">Full-featured widget</p>
+            <div id="demo-default"></div>
+            <div class="event-log" id="log-default"></div>
+        </div>
+
+        <div class="demo-grid">
+            <div>
+                <h3>Compact</h3>
+                <div class="demo-section">
+                    <p class="demo-label">Add class "ww-compact"</p>
+                    <div id="demo-compact" class="ww-compact"></div>
+                </div>
+            </div>
+
+            <div>
+                <h3>Light Theme</h3>
+                <div class="demo-section">
+                    <p class="demo-label">Add class "ww-light"</p>
+                    <div id="demo-light" class="ww-light"></div>
+                </div>
+            </div>
+        </div>
+
+        <h3>Inline</h3>
+        <div class="demo-section">
+            <p class="demo-label">Horizontal layout with "ww-inline" class</p>
+            <div id="demo-inline" class="ww-inline"></div>
+        </div>
+
+        <h3>Minimal</h3>
+        <div class="demo-section">
+            <p class="demo-label">Just the button with "ww-minimal" class</p>
+            <div id="demo-minimal" class="ww-minimal"></div>
+        </div>
+
+        <h2>API</h2>
+
+        <h3>Options</h3>
+        <pre><code>{
+  serverUrl: <span class="string">'/whisper/inference'</span>,  <span class="comment">// Whisper server endpoint</span>
+  showVisualizer: <span class="highlight">true</span>,              <span class="comment">// Show waveform</span>
+  showTimer: <span class="highlight">true</span>,                   <span class="comment">// Show recording timer</span>
+  showHistory: <span class="highlight">true</span>,                 <span class="comment">// Show transcription history</span>
+  historyLimit: <span class="highlight">20</span>,                  <span class="comment">// Max history items</span>
+  onTranscription: (text) =&gt; {},    <span class="comment">// Called with transcribed text</span>
+  onError: (message) =&gt; {},         <span class="comment">// Called on error</span>
+  onRecordingStart: () =&gt; {},       <span class="comment">// Called when recording starts</span>
+  onRecordingStop: () =&gt; {}         <span class="comment">// Called when recording stops</span>
+}</code></pre>
+
+        <h3>Methods</h3>
+        <pre><code>widget.<span class="highlight">start</span>()            <span class="comment">// Start recording</span>
+widget.<span class="highlight">stop</span>()             <span class="comment">// Stop recording</span>
+widget.<span class="highlight">toggle</span>()           <span class="comment">// Toggle recording</span>
+widget.<span class="highlight">copy</span>()             <span class="comment">// Copy transcription to clipboard</span>
+widget.<span class="highlight">getTranscription</span>() <span class="comment">// Get current transcription text</span>
+widget.<span class="highlight">getHistory</span>()       <span class="comment">// Get transcription history array</span>
+widget.<span class="highlight">clearHistory</span>()     <span class="comment">// Clear history</span>
+widget.<span class="highlight">setServerUrl</span>(url)  <span class="comment">// Change server URL</span>
+widget.<span class="highlight">destroy</span>()          <span class="comment">// Clean up and remove widget</span></code></pre>
+
+        <h3>Events</h3>
+        <pre><code><span class="comment">// Listen for events on the container element</span>
+container.addEventListener(<span class="string">'whisper:transcription'</span>, (e) =&gt; {
+  console.log(<span class="string">'Text:'</span>, e.detail.text);
+});
+
+<span class="comment">// Available events:</span>
+<span class="string">'whisper:ready'</span>         <span class="comment">// Widget initialized</span>
+<span class="string">'whisper:recording'</span>     <span class="comment">// Recording started</span>
+<span class="string">'whisper:stopped'</span>       <span class="comment">// Recording stopped</span>
+<span class="string">'whisper:processing'</span>    <span class="comment">// Sending to server</span>
+<span class="string">'whisper:transcription'</span> <span class="comment">// Transcription received { text }</span>
+<span class="string">'whisper:error'</span>         <span class="comment">// Error occurred { message }</span></code></pre>
+
+        <h3>CSS Custom Properties</h3>
+        <pre><code><span class="comment">/* Override in your CSS or on the container */</span>
+.whisper-widget {
+  --ww-bg-primary: <span class="string">#1a1a2e</span>;
+  --ww-bg-secondary: <span class="string">#16213e</span>;
+  --ww-text-primary: <span class="string">#eaeaea</span>;
+  --ww-text-secondary: <span class="string">#a0a0a0</span>;
+  --ww-accent: <span class="string">#e94560</span>;
+  --ww-success: <span class="string">#4ade80</span>;
+  --ww-recording: <span class="string">#ef4444</span>;
+  --ww-border-radius: <span class="string">0.5rem</span>;
+}</code></pre>
+
+        <footer>
+            <p>Part of <a href="https://github.com/lawless-m/TheHand">TheHand</a> &middot; Powered by <a href="https://github.com/ggerganov/whisper.cpp">whisper.cpp</a></p>
+        </footer>
+    </div>
+
+    <script src="whisper-widget.js"></script>
+    <script>
+        // Helper to log events
+        function createLogger(logId) {
+            const log = document.getElementById(logId);
+            return (msg, isError = false) => {
+                const div = document.createElement('div');
+                div.className = 'event' + (isError ? ' error' : '');
+                div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+                log.insertBefore(div, log.firstChild);
+                if (log.children.length > 20) {
+                    log.removeChild(log.lastChild);
+                }
+            };
+        }
+
+        // Default demo with event logging
+        const logDefault = createLogger('log-default');
+        const defaultWidget = new WhisperWidget('#demo-default', {
+            serverUrl: '/whisper/inference',
+            onTranscription: (text) => logDefault(`Transcription: "${text}"`),
+            onError: (msg) => logDefault(`Error: ${msg}`, true),
+            onRecordingStart: () => logDefault('Recording started'),
+            onRecordingStop: () => logDefault('Recording stopped')
+        });
+
+        // Compact demo
+        new WhisperWidget('#demo-compact', {
+            serverUrl: '/whisper/inference',
+            showHistory: false
+        });
+
+        // Light theme demo
+        new WhisperWidget('#demo-light', {
+            serverUrl: '/whisper/inference',
+            showHistory: false
+        });
+
+        // Inline demo
+        new WhisperWidget('#demo-inline', {
+            serverUrl: '/whisper/inference',
+            showHistory: false
+        });
+
+        // Minimal demo
+        new WhisperWidget('#demo-minimal', {
+            serverUrl: '/whisper/inference',
+            showVisualizer: false,
+            showTimer: false,
+            showHistory: false,
+            onTranscription: (text) => alert(`Transcribed: ${text}`)
+        });
+    </script>
+</body>
+</html>
