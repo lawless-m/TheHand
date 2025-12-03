@@ -46,9 +46,9 @@ fn render_status(frame: &mut Frame, area: Rect, app: &AppStateContainer) {
 
     // Status text
     let status_text = if let Some(ref error) = app.error_message {
-        format!("Status: {} | Device: {} | Error: {}", state_text, app.current_device_name, error)
+        format!("Status: {} | Device: {} | Server: {} | Error: {}", state_text, app.current_device_name, app.server_url, error)
     } else {
-        format!("Status: {} | Device: {}", state_text, app.current_device_name)
+        format!("Status: {} | Device: {} | Server: {}", state_text, app.current_device_name, app.server_url)
     };
 
     let status = Paragraph::new(status_text)
@@ -57,8 +57,9 @@ fn render_status(frame: &mut Frame, area: Rect, app: &AppStateContainer) {
 
     frame.render_widget(status, chunks[0]);
 
-    // VU meter
+    // VU meter with numeric RMS value
     let audio_percent = (app.audio_level * 100.0) as u16;
+    let label = format!("RMS: {:.4}", app.audio_level);
     let vu_meter = Gauge::default()
         .block(Block::default().borders(Borders::ALL))
         .gauge_style(
@@ -67,6 +68,7 @@ fn render_status(frame: &mut Frame, area: Rect, app: &AppStateContainer) {
                 .bg(Color::Black)
                 .add_modifier(Modifier::BOLD),
         )
+        .label(label)
         .percent(audio_percent);
 
     frame.render_widget(vu_meter, chunks[1]);

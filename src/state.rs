@@ -83,10 +83,11 @@ pub struct AppStateContainer {
     pub voice_commands: Vec<VoiceCommand>,
     pub filtered_phrases: Vec<String>,
     pub last_typed_length: usize, // Length of last typed text for undo
+    pub server_url: String, // Whisper server URL being used
 }
 
 impl AppStateContainer {
-    pub fn new(history_limit: usize) -> Self {
+    pub fn new(history_limit: usize, server_url: String) -> Self {
         Self {
             state: AppState::Idle,
             history: VecDeque::new(),
@@ -104,6 +105,7 @@ impl AppStateContainer {
             voice_commands: Vec::new(),
             filtered_phrases: Vec::new(),
             last_typed_length: 0,
+            server_url,
         }
     }
 

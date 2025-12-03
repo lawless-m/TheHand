@@ -16,6 +16,7 @@ model_path = "~/.local/share/thehand/models/ggml-base.bin"
 # Start whisper-server separately:
 #   ~/whisper.cpp/build/bin/whisper-server -m ~/whisper.cpp/models/ggml-base.bin --port 8080
 # If server is not running, TheHand automatically falls back to CLI mode
+# Can be overridden with: thehand --server <URL>
 server_url = "http://localhost:8080"
 
 [audio]

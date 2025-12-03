@@ -9,6 +9,7 @@ pub fn execute_command(command: &VoiceCommand) -> Result<()> {
     match command.action_type.as_str() {
         "keybind" => execute_keybind(&command.value),
         "shell" => execute_shell(&command.value),
+        "text" => execute_text(&command.value),
         "undo" => Ok(()), // Undo is handled specially in main loop
         _ => anyhow::bail!("Unknown command type: {}", command.action_type),
     }
@@ -120,6 +121,22 @@ fn parse_key(s: &str) -> Result<Key> {
     };
 
     Ok(key)
+}
+
+/// Execute a text command - types text and presses Return
+fn execute_text(text: &str) -> Result<()> {
+    let mut enigo = Enigo::new(&Settings::default())
+        .context("Failed to initialize enigo")?;
+
+    // Type the text
+    enigo.text(text)
+        .context("Failed to type text")?;
+
+    // Press Return
+    enigo.key(Key::Return, enigo::Direction::Click)
+        .context("Failed to press Return")?;
+
+    Ok(())
 }
 
 /// Execute a shell command

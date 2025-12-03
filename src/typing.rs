@@ -8,13 +8,12 @@ pub fn type_text(text: &str, keystroke_delay_ms: u64) -> Result<()> {
     let mut enigo = Enigo::new(&Settings::default())?;
     let delay = Duration::from_millis(keystroke_delay_ms);
 
-    for c in text.chars() {
-        // Type the character
-        if c == '\n' {
-            enigo.key(Key::Return, enigo::Direction::Click)?;
-        } else {
-            enigo.text(&c.to_string())?;
-        }
+    // Strip newlines - we never want Enter pressed for normal transcriptions
+    // Only the "text" command type should press Enter
+    let text_cleaned = text.replace('\n', " ");
+
+    for c in text_cleaned.chars() {
+        enigo.text(&c.to_string())?;
 
         // Small delay between keystrokes for reliability
         if keystroke_delay_ms > 0 {

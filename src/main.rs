@@ -10,6 +10,7 @@ mod ui;
 
 use anyhow::Result;
 use audio::{AudioCapture, AudioEvent};
+use clap::Parser;
 use config::Config;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
@@ -23,14 +24,26 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 
+/// Voice-activated transcription that types directly into your focused window
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    /// Whisper server URL (overrides prefs.toml)
+    #[arg(short, long)]
+    server: Option<String>,
+}
+
 fn main() -> Result<()> {
+    // Parse command line arguments
+    let cli = Cli::parse();
+
     // Check if we're running in a terminal, if not, launch rxvt
     if !is_terminal() && std::env::var("THEHAND_IN_TERMINAL").is_err() {
         launch_in_terminal()?;
         return Ok(());
     }
     // Load configuration first so errors can be displayed
-    let config = match Config::load() {
+    let mut config = match Config::load() {
         Ok(cfg) => cfg,
         Err(e) => {
             eprintln!("Error loading configuration: {}", e);
@@ -42,6 +55,11 @@ fn main() -> Result<()> {
             std::process::exit(1);
         }
     };
+
+    // Override server URL if provided via command line
+    if let Some(server_url) = cli.server {
+        config.whisper.server_url = server_url;
+    }
 
     // Run the application
     if let Err(e) = run_app(config) {
@@ -71,7 +89,7 @@ fn run_app(config: Config) -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     // Create app state
-    let mut app = AppStateContainer::new(config.ui.history_limit);
+    let mut app = AppStateContainer::new(config.ui.history_limit, config.whisper.server_url.clone());
 
     // Load voice commands
     match commands_config::CommandsFile::load() {
