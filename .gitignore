@@ -19,3 +19,4 @@ Thumbs.db
 
 # Local configuration (users should create their own)
 prefs.toml
+*.wav

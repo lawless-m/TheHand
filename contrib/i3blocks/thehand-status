@@ -1,0 +1,32 @@
+#!/bin/bash
+# TheHand status indicator for i3blocks
+
+# Handle click events
+if [ -n "$BLOCK_BUTTON" ]; then
+    case $BLOCK_BUTTON in
+        1|3) # Left or right click - toggle mute via signal
+            # Send SIGUSR1 to TheHand process to toggle mute
+            pkill -USR1 -x thehand
+            ;;
+    esac
+fi
+
+# Check if TheHand is running
+if pgrep -x thehand > /dev/null; then
+    # Check state file if it exists
+    STATE_FILE="/tmp/thehand_state"
+    if [ -f "$STATE_FILE" ]; then
+        STATE=$(cat "$STATE_FILE")
+        if [ "$STATE" = "Muted" ]; then
+            echo "<span color='#FF0000'>MIC✗</span>"
+        else
+            echo "<span color='#00FF00'>MIC✓</span>"
+        fi
+    else
+        # Running but no state file yet
+        echo "<span color='#00FF00'>MIC✓</span>"
+    fi
+else
+    # Not running
+    echo "<span color='#666666'>MIC-</span>"
+fi

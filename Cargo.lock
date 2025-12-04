@@ -2010,6 +2010,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shellexpand",
+ "signal-hook",
  "thiserror 1.0.69",
  "toml",
 ]

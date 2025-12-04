@@ -88,7 +88,7 @@ pub struct AppStateContainer {
 
 impl AppStateContainer {
     pub fn new(history_limit: usize, server_url: String) -> Self {
-        Self {
+        let mut app = Self {
             state: AppState::Idle,
             history: VecDeque::new(),
             audio_level: 0.0,
@@ -106,7 +106,10 @@ impl AppStateContainer {
             filtered_phrases: Vec::new(),
             last_typed_length: 0,
             server_url,
-        }
+        };
+        // Write initial state file
+        app.write_state_file();
+        app
     }
 
     /// Add a transcription to history
@@ -136,6 +139,19 @@ impl AppStateContainer {
             AppState::Muted => AppState::Idle,
             _ => AppState::Muted,
         };
+        self.write_state_file();
+    }
+
+    /// Write state to file for external monitoring (i3blocks, etc.)
+    fn write_state_file(&self) {
+        use std::io::Write;
+        let state_str = match self.state {
+            AppState::Muted => "Muted",
+            _ => "Active",
+        };
+        if let Ok(mut file) = std::fs::File::create("/tmp/thehand_state") {
+            let _ = writeln!(file, "{}", state_str);
+        }
     }
 
     /// Set error message

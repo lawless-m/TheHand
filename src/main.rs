@@ -18,10 +18,13 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
+use signal_hook::consts::SIGUSR1;
+use signal_hook::iterator::Signals;
 use state::{AppState, AppStateContainer};
 use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::path::PathBuf;
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use std::time::Duration;
 
 /// Voice-activated transcription that types directly into your focused window
@@ -129,8 +132,19 @@ fn run_app(config: Config) -> Result<()> {
         Some(jabra_device_name),
     )?;
 
+    // Setup signal handler for SIGUSR1 (toggle mute)
+    let toggle_mute_flag = Arc::new(AtomicBool::new(false));
+    let toggle_mute_flag_clone = toggle_mute_flag.clone();
+
+    std::thread::spawn(move || {
+        let mut signals = Signals::new(&[SIGUSR1]).expect("Failed to create signal handler");
+        for _ in signals.forever() {
+            toggle_mute_flag_clone.store(true, Ordering::Relaxed);
+        }
+    });
+
     // Main loop
-    let result = main_loop(&mut terminal, &mut app, &mut audio, &config);
+    let result = main_loop(&mut terminal, &mut app, &mut audio, &config, toggle_mute_flag);
 
     // Restore terminal
     disable_raw_mode()?;
@@ -149,12 +163,19 @@ fn main_loop(
     app: &mut AppStateContainer,
     audio: &mut AudioCapture,
     config: &Config,
+    toggle_mute_flag: Arc<AtomicBool>,
 ) -> Result<()> {
     let mut pending_transcription: Option<PathBuf> = None;
     let mut device_preview: Option<audio::DevicePreview> = None;
     let mut last_preview_device: Option<usize> = None;
 
     loop {
+        // Check if signal handler wants to toggle mute
+        if toggle_mute_flag.load(Ordering::Relaxed) {
+            toggle_mute_flag.store(false, Ordering::Relaxed);
+            app.toggle_mute();
+        }
+
         // Update device preview level if in device selection mode
         if app.state == AppState::DeviceSelection {
             let current_device = app.available_devices.get(app.selected_device_index).cloned();
