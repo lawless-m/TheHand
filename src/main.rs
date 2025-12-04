@@ -113,9 +113,9 @@ fn run_app(config: Config) -> Result<()> {
     }
 
     // Skip device enumeration on startup to avoid headphone noise
-    // Just open the Jabra directly
-    let jabra_device_name = "plughw:CARD=LINK,DEV=0".to_string();
-    app.current_device_name = "Jabra EVOLVE LINK".to_string();
+    // Use AB13X USB Audio device for direct ALSA access
+    let jabra_device_name = "hw:CARD=Audio,DEV=0".to_string();
+    app.current_device_name = "AB13X USB Audio".to_string();
     app.current_raw_device_name = Some(jabra_device_name.clone());
 
     // Initialize audio capture directly with Jabra
@@ -370,8 +370,10 @@ fn main_loop(
                         ).cloned();
 
                         if let Some(command) = matched_command {
-                            // Execute the voice command
-                            app.set_state(AppState::Typing);
+                            // Execute the voice command (but not for mute)
+                            if command.action_type != "mute" {
+                                app.set_state(AppState::Typing);
+                            }
 
                             // Handle undo command specially
                             if command.action_type == "undo" {
@@ -380,6 +382,18 @@ fn main_loop(
                                 } else {
                                     app.add_to_history(format!("[UNDO] {} chars", app.last_typed_length));
                                     app.last_typed_length = 0; // Reset after undo
+                                }
+                            } else if command.action_type == "mute" {
+                                // Handle mute command specially
+                                // Check current state BEFORE toggling
+                                let was_muted = app.state == AppState::Muted;
+                                app.toggle_mute();
+                                let status = if was_muted { "UNMUTED" } else { "MUTED" };
+                                app.add_to_history(format!("[{}] {}", status, text));
+
+                                // Log to file if enabled
+                                if config.ui.log_to_file {
+                                    let _ = log_transcription(&config.ui.log_path, &format!("[{}] {}", status, text));
                                 }
                             } else {
                                 // Regular command
@@ -396,7 +410,10 @@ fn main_loop(
                                 }
                             }
 
-                            app.set_state(AppState::Idle);
+                            // Don't override state for mute command (it handles its own state)
+                            if command.action_type != "mute" {
+                                app.set_state(AppState::Idle);
+                            }
                         } else {
                             // Not a command, type the text normally
                             app.set_state(AppState::Typing);

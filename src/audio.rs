@@ -748,7 +748,7 @@ impl AudioCapture {
         if let Ok(device_name) = device.name() {
             debug_log(&format!("DEBUG: Checking device name for mono: {}", device_name));
             if (device_name.starts_with("hw:") || device_name.starts_with("plughw:"))
-               && device_name.contains("LINK") {
+               && (device_name.contains("LINK") || device_name.contains("CARD=Audio")) {
                 config.channels = 1;
                 debug_log(&format!("DEBUG: Forcing mono for USB device: {}", device_name));
             }

@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use enigo::{Enigo, Key, Keyboard, Settings};
+use enigo::{Button, Enigo, Key, Keyboard, Mouse, Settings};
 use std::process::{Command, Stdio};
 
 use crate::commands_config::VoiceCommand;
@@ -10,6 +10,7 @@ pub fn execute_command(command: &VoiceCommand) -> Result<()> {
         "keybind" => execute_keybind(&command.value),
         "shell" => execute_shell(&command.value),
         "text" => execute_text(&command.value),
+        "mouse" => execute_mouse(&command.value),
         "undo" => Ok(()), // Undo is handled specially in main loop
         _ => anyhow::bail!("Unknown command type: {}", command.action_type),
     }
@@ -135,6 +136,26 @@ fn execute_text(text: &str) -> Result<()> {
     // Press Return
     enigo.key(Key::Return, enigo::Direction::Click)
         .context("Failed to press Return")?;
+
+    Ok(())
+}
+
+/// Execute a mouse button click
+fn execute_mouse(button_str: &str) -> Result<()> {
+    let mut enigo = Enigo::new(&Settings::default())
+        .context("Failed to initialize enigo")?;
+
+    let button = match button_str.to_lowercase().as_str() {
+        "left" | "1" | "mouse1" => Button::Left,
+        "right" | "2" | "mouse2" => Button::Right,
+        "middle" | "3" | "mouse3" => Button::Middle,
+        "back" | "4" | "mouse4" => Button::Back,
+        "forward" | "5" | "mouse5" => Button::Forward,
+        _ => anyhow::bail!("Unknown mouse button: {}", button_str),
+    };
+
+    enigo.button(button, enigo::Direction::Click)
+        .context("Failed to click mouse button")?;
 
     Ok(())
 }
