@@ -187,26 +187,15 @@ fn execute_shell(cmd: &str) -> Result<()> {
 
 /// Check if transcription matches a voice command pattern
 /// Returns the matched command if found
+/// Note: wake_word parameter kept for backward compatibility but no longer used
 pub fn match_command<'a>(
     transcription: &str,
-    wake_word: &str,
+    _wake_word: &str,
     commands: &'a [VoiceCommand],
 ) -> Option<&'a VoiceCommand> {
-    // Wake word disabled
-    if wake_word.is_empty() {
-        return None;
-    }
-
-    // Check if transcription starts with wake word (case-insensitive)
+    // Normalize the transcription: lowercase and strip punctuation
     let transcription_lower = transcription.trim().to_lowercase();
-    let wake_word_lower = wake_word.trim().to_lowercase();
-
-    if !transcription_lower.starts_with(&wake_word_lower) {
-        return None;
-    }
-
-    // Extract the command part after wake word
-    let mut command_part = transcription_lower[wake_word_lower.len()..].to_string();
+    let mut command_part = transcription_lower;
 
     // Strip leading punctuation (comma, period, exclamation, etc.) and whitespace
     command_part = command_part.trim_start_matches(|c: char| c.is_ascii_punctuation() || c.is_whitespace()).to_string();
