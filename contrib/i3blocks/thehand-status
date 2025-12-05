@@ -16,11 +16,22 @@ if pgrep -x thehand > /dev/null; then
     # Check state file if it exists
     STATE_FILE="/tmp/thehand_state"
     if [ -f "$STATE_FILE" ]; then
-        STATE=$(cat "$STATE_FILE")
+        # Read first line (mute status) and second line (last command)
+        STATE=$(head -1 "$STATE_FILE")
+        LAST_CMD=$(sed -n '2p' "$STATE_FILE")
+
+        # Display mute status
         if [ "$STATE" = "Muted" ]; then
-            echo "<span color='#FF0000'>MIC✗</span>"
+            STATUS="<span color='#FF0000'>MIC✗</span>"
         else
-            echo "<span color='#00FF00'>MIC✓</span>"
+            STATUS="<span color='#00FF00'>MIC✓</span>"
+        fi
+
+        # Prepend last command if present
+        if [ -n "$LAST_CMD" ]; then
+            echo "<span color='#FFAA00'>$LAST_CMD</span> $STATUS"
+        else
+            echo "$STATUS"
         fi
     else
         # Running but no state file yet

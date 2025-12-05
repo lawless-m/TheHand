@@ -402,6 +402,7 @@ fn main_loop(
                                     app.set_error(format!("Undo failed: {}", e));
                                 } else {
                                     app.add_to_history(format!("[UNDO] {} chars", app.last_typed_length));
+                                    app.set_last_command(format!("UNDO"));
                                     app.last_typed_length = 0; // Reset after undo
                                 }
                             } else if command.action_type == "mute" {
@@ -411,6 +412,7 @@ fn main_loop(
                                 app.toggle_mute();
                                 let status = if was_muted { "UNMUTED" } else { "MUTED" };
                                 app.add_to_history(format!("[{}] {}", status, text));
+                                app.set_last_command(status.to_string());
 
                                 // Log to file if enabled
                                 if config.ui.log_to_file {
@@ -423,6 +425,7 @@ fn main_loop(
                                 } else {
                                     // Add to history
                                     app.add_to_history(format!("[CMD] {}", text));
+                                    app.set_last_command(text.clone());
 
                                     // Log to file if enabled
                                     if config.ui.log_to_file {
@@ -448,6 +451,9 @@ fn main_loop(
 
                                 // Add to history
                                 app.add_to_history(text.clone());
+
+                                // Track for i3blocks display
+                                app.set_last_command(text.clone());
 
                                 // Log to file if enabled
                                 if config.ui.log_to_file {

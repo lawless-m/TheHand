@@ -84,6 +84,8 @@ pub struct AppStateContainer {
     pub filtered_phrases: Vec<String>,
     pub last_typed_length: usize, // Length of last typed text for undo
     pub server_url: String, // Whisper server URL being used
+    pub last_command: Option<String>, // Last executed command for i3blocks display
+    pub last_command_timestamp: Option<DateTime<Local>>, // Timestamp of last command for expiration
 }
 
 impl AppStateContainer {
@@ -106,6 +108,8 @@ impl AppStateContainer {
             filtered_phrases: Vec::new(),
             last_typed_length: 0,
             server_url,
+            last_command: None,
+            last_command_timestamp: None,
         };
         // Write initial state file
         app.write_state_file();
@@ -149,9 +153,33 @@ impl AppStateContainer {
             AppState::Muted => "Muted",
             _ => "Active",
         };
+
         if let Ok(mut file) = std::fs::File::create("/tmp/thehand_state") {
             let _ = writeln!(file, "{}", state_str);
+
+            // Add last command if still active (within 10 seconds)
+            if let Some(cmd) = self.get_active_last_command() {
+                let _ = writeln!(file, "{}", cmd);
+            }
         }
+    }
+
+    /// Set the last executed command (for i3blocks display)
+    pub fn set_last_command(&mut self, cmd: String) {
+        self.last_command = Some(cmd);
+        self.last_command_timestamp = Some(Local::now());
+        self.write_state_file(); // Trigger i3blocks update
+    }
+
+    /// Get the last command if it's still active (within 10 seconds)
+    fn get_active_last_command(&self) -> Option<String> {
+        if let (Some(cmd), Some(ts)) = (&self.last_command, &self.last_command_timestamp) {
+            let elapsed = Local::now().signed_duration_since(*ts);
+            if elapsed.num_seconds() < 10 {
+                return Some(cmd.clone());
+            }
+        }
+        None
     }
 
     /// Set error message
