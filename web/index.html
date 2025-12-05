@@ -176,6 +176,12 @@
             <p class="subtitle">A modular audio transcription component for web applications</p>
         </header>
 
+        <h2>Live Demo</h2>
+        <div class="demo-section">
+            <div id="demo-default"></div>
+            <div class="event-log" id="log-default"></div>
+        </div>
+
         <h2>Quick Start</h2>
         <pre><code><span class="comment">&lt;!-- Include the CSS and JS --&gt;</span>
 &lt;link rel=<span class="string">"stylesheet"</span> href=<span class="string">"whisper-widget.css"</span>&gt;
@@ -187,19 +193,12 @@
 <span class="comment">&lt;!-- Initialize --&gt;</span>
 &lt;script&gt;
   <span class="highlight">const</span> widget = <span class="highlight">new</span> WhisperWidget(<span class="string">'#my-widget'</span>, {
-    serverUrl: <span class="string">'/whisper/inference'</span>,
+    serverUrl: <span class="string">'http://rivsprod01:5555/inference'</span>,
     onTranscription: (text) =&gt; console.log(text)
   });
 &lt;/script&gt;</code></pre>
 
-        <h2>Demos</h2>
-
-        <h3>Default</h3>
-        <div class="demo-section">
-            <p class="demo-label">Full-featured widget</p>
-            <div id="demo-default"></div>
-            <div class="event-log" id="log-default"></div>
-        </div>
+        <h2>More Demos</h2>
 
         <div class="demo-grid">
             <div>
@@ -235,7 +234,7 @@
 
         <h3>Options</h3>
         <pre><code>{
-  serverUrl: <span class="string">'/whisper/inference'</span>,  <span class="comment">// Whisper server endpoint</span>
+  serverUrl: <span class="string">'http://rivsprod01:5555/inference'</span>,  <span class="comment">// Whisper server endpoint</span>
   showVisualizer: <span class="highlight">true</span>,              <span class="comment">// Show waveform</span>
   showTimer: <span class="highlight">true</span>,                   <span class="comment">// Show recording timer</span>
   showHistory: <span class="highlight">true</span>,                 <span class="comment">// Show transcription history</span>
@@ -308,7 +307,7 @@ container.addEventListener(<span class="string">'whisper:transcription'</span>, 
         // Default demo with event logging
         const logDefault = createLogger('log-default');
         const defaultWidget = new WhisperWidget('#demo-default', {
-            serverUrl: '/whisper/inference',
+            serverUrl: 'http://rivsprod01:5555/inference',
             onTranscription: (text) => logDefault(`Transcription: "${text}"`),
             onError: (msg) => logDefault(`Error: ${msg}`, true),
             onRecordingStart: () => logDefault('Recording started'),
@@ -317,25 +316,25 @@ container.addEventListener(<span class="string">'whisper:transcription'</span>, 
 
         // Compact demo
         new WhisperWidget('#demo-compact', {
-            serverUrl: '/whisper/inference',
+            serverUrl: 'http://rivsprod01:5555/inference',
             showHistory: false
         });
 
         // Light theme demo
         new WhisperWidget('#demo-light', {
-            serverUrl: '/whisper/inference',
+            serverUrl: 'http://rivsprod01:5555/inference',
             showHistory: false
         });
 
         // Inline demo
         new WhisperWidget('#demo-inline', {
-            serverUrl: '/whisper/inference',
+            serverUrl: 'http://rivsprod01:5555/inference',
             showHistory: false
         });
 
         // Minimal demo
         new WhisperWidget('#demo-minimal', {
-            serverUrl: '/whisper/inference',
+            serverUrl: 'http://rivsprod01:5555/inference',
             showVisualizer: false,
             showTimer: false,
             showHistory: false,

@@ -40,6 +40,42 @@
     box-sizing: border-box;
 }
 
+/* Device Selector */
+.ww-device-selector {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ww-device-selector label {
+    color: var(--ww-text-secondary);
+    font-size: 0.875rem;
+}
+
+.ww-mic-select,
+.ww-server-select {
+    flex: 1;
+    padding: 0.5rem;
+    background: var(--ww-bg-secondary);
+    color: var(--ww-text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--ww-border-radius);
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.ww-mic-select:hover,
+.ww-server-select:hover {
+    border-color: var(--ww-accent);
+}
+
+.ww-mic-select:focus,
+.ww-server-select:focus {
+    outline: none;
+    border-color: var(--ww-accent);
+}
+
 /* Visualizer Section */
 .ww-visualizer-section {
     display: flex;

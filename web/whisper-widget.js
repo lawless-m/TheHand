@@ -44,8 +44,10 @@ class WhisperWidget {
             isProcessing: false,
             mediaRecorder: null,
             audioChunks: [],
+            pcmData: [],  // Store raw PCM samples
             audioContext: null,
             analyser: null,
+            scriptProcessor: null,
             animationId: null,
             timerInterval: null,
             startTime: null,
@@ -67,6 +69,19 @@ class WhisperWidget {
         this.container.classList.add('whisper-widget');
 
         this.container.innerHTML = `
+            <div class="ww-device-selector">
+                <label for="ww-mic-select">Microphone:</label>
+                <select class="ww-mic-select">
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <div class="ww-device-selector">
+                <label for="ww-server-select">Server:</label>
+                <select class="ww-server-select">
+                    <option value="http://rivsprod01:5555/inference">rivsprod01:5555 (Network)</option>
+                    <option value="http://localhost:5555/inference">localhost:5555 (Local)</option>
+                </select>
+            </div>
             <div class="ww-visualizer-section">
                 ${this.options.showVisualizer ? '<canvas class="ww-visualizer"></canvas>' : ''}
                 <div class="ww-controls">
@@ -100,6 +115,8 @@ class WhisperWidget {
 
         // Cache element references
         this.elements = {
+            micSelect: this.container.querySelector('.ww-mic-select'),
+            serverSelect: this.container.querySelector('.ww-server-select'),
             canvas: this.container.querySelector('.ww-visualizer'),
             timer: this.container.querySelector('.ww-timer'),
             recordBtn: this.container.querySelector('.ww-record-btn'),
@@ -112,6 +129,14 @@ class WhisperWidget {
             clearBtn: this.container.querySelector('.ww-clear-btn')
         };
 
+        // Populate microphone list
+        this._populateMicrophoneList();
+
+        // Set server selector to current server URL
+        if (this.elements.serverSelect) {
+            this.elements.serverSelect.value = this.options.serverUrl;
+        }
+
         if (this.elements.canvas) {
             this.canvasCtx = this.elements.canvas.getContext('2d');
         }
@@ -120,6 +145,14 @@ class WhisperWidget {
     _bindEvents() {
         this.elements.recordBtn.addEventListener('click', () => this.toggle());
         this.elements.copyBtn.addEventListener('click', () => this.copy());
+
+        // Server selector change handler
+        if (this.elements.serverSelect) {
+            this.elements.serverSelect.addEventListener('change', (e) => {
+                this.setServerUrl(e.target.value);
+                console.log('Server changed to:', this.options.serverUrl);
+            });
+        }
 
         if (this.elements.clearBtn) {
             this.elements.clearBtn.addEventListener('click', () => this.clearHistory());
@@ -242,6 +275,26 @@ class WhisperWidget {
 
     // Public API
 
+    async _populateMicrophoneList() {
+        try {
+            // Request initial permissions to get device labels
+            await navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => stream.getTracks().forEach(track => track.stop()));
+
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioInputs = devices.filter(device => device.kind === 'audioinput');
+
+            this.elements.micSelect.innerHTML = audioInputs.map((device, idx) =>
+                `<option value="${device.deviceId}"${idx === 0 ? ' selected' : ''}>
+                    ${device.label || `Microphone ${idx + 1}`}
+                </option>`
+            ).join('');
+        } catch (err) {
+            console.error('Failed to enumerate devices:', err);
+            this.elements.micSelect.innerHTML = '<option value="">No microphones found</option>';
+        }
+    }
+
     async toggle() {
         if (this.state.isRecording) {
             this.stop();
@@ -254,46 +307,57 @@ class WhisperWidget {
         if (this.state.isRecording || this.state.isProcessing) return;
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    channelCount: 1,
-                    sampleRate: 16000,
-                    echoCancellation: true,
-                    noiseSuppression: true
-                }
-            });
+            const selectedDeviceId = this.elements.micSelect.value;
 
-            // Set up audio context for visualization
+            const constraints = {
+                audio: {
+                    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+                    channelCount: 1,
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false
+                }
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            // Log which device is actually being used
+            const audioTrack = stream.getAudioTracks()[0];
+            console.log('Using microphone:', audioTrack.label, audioTrack.getSettings());
+
+            // Set up audio context for visualization and recording (use device's native sample rate)
             this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            console.log('AudioContext sample rate:', this.state.audioContext.sampleRate);
+
             this.state.analyser = this.state.audioContext.createAnalyser();
             this.state.analyser.fftSize = 2048;
             const source = this.state.audioContext.createMediaStreamSource(stream);
             source.connect(this.state.analyser);
 
-            // Determine best supported format
-            let mimeType = 'audio/webm';
-            if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-                mimeType = 'audio/webm;codecs=opus';
-            } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
-                mimeType = 'audio/ogg;codecs=opus';
-            } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-                mimeType = 'audio/mp4';
-            }
+            // Capture raw PCM data using ScriptProcessorNode
+            this.state.scriptProcessor = this.state.audioContext.createScriptProcessor(4096, 1, 1);
+            this.state.pcmData = [];  // Reset for new recording
+            this.state.nativeSampleRate = this.state.audioContext.sampleRate;
+            console.log('Recording will capture at', this.state.nativeSampleRate, 'Hz');
 
-            this.state.mimeType = mimeType;
-            this.state.mediaRecorder = new MediaRecorder(stream, { mimeType });
-            this.state.audioChunks = [];
-            this.state.stream = stream;
+            this.state.scriptProcessor.onaudioprocess = (e) => {
+                if (this.state.isRecording) {
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    // Copy the data
+                    const copy = new Float32Array(inputData);
+                    this.state.pcmData.push(copy);
 
-            this.state.mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    this.state.audioChunks.push(event.data);
+                    // Debug: Check if we're actually getting audio
+                    if (this.state.pcmData.length === 1) {
+                        const rms = Math.sqrt(copy.reduce((sum, val) => sum + val * val, 0) / copy.length);
+                        console.log('First audio chunk RMS:', rms, 'length:', copy.length);
+                    }
                 }
             };
 
-            this.state.mediaRecorder.onstop = () => this._onRecordingStopped();
-
-            this.state.mediaRecorder.start(100);
+            source.connect(this.state.scriptProcessor);
+            this.state.scriptProcessor.connect(this.state.audioContext.destination);
+            this.state.stream = stream;
             this.state.isRecording = true;
             this.elements.recordBtn.classList.add('ww-recording');
             this._setStatus('recording', 'Recording...');
@@ -319,10 +383,6 @@ class WhisperWidget {
     stop() {
         if (!this.state.isRecording) return;
 
-        if (this.state.mediaRecorder && this.state.mediaRecorder.state !== 'inactive') {
-            this.state.mediaRecorder.stop();
-        }
-
         this.state.isRecording = false;
         this.elements.recordBtn.classList.remove('ww-recording');
         this._setStatus('processing', 'Processing...');
@@ -339,23 +399,44 @@ class WhisperWidget {
         if (this.options.onRecordingStop) {
             this.options.onRecordingStop();
         }
+
+        // Process the recorded audio
+        this._onRecordingStopped();
     }
 
     async _onRecordingStopped() {
         this.state.isProcessing = true;
 
-        const audioBlob = new Blob(this.state.audioChunks, { type: this.state.mimeType });
+        console.log('Recorded', this.state.pcmData.length, 'chunks at', this.state.nativeSampleRate, 'Hz');
 
-        // Clean up stream
+        // Clean up stream resources
         if (this.state.stream) {
             this.state.stream.getTracks().forEach(track => track.stop());
+        }
+        if (this.state.scriptProcessor) {
+            this.state.scriptProcessor.disconnect();
+            this.state.scriptProcessor = null;
         }
         if (this.state.audioContext) {
             this.state.audioContext.close();
             this.state.audioContext = null;
         }
 
-        await this._transcribe(audioBlob);
+        // Check if we have any audio data
+        if (this.state.pcmData.length === 0) {
+            this._showError('Recording too short - no audio captured');
+            this.state.isProcessing = false;
+            if (this.elements.timer) {
+                this.elements.timer.textContent = '0:00';
+            }
+            this.state.startTime = null;
+            this._drawIdle();
+            return;
+        }
+
+        // Convert PCM data to WAV (resample to 16kHz)
+        const wavBlob = await this._pcmDataToWav(this.state.pcmData, this.state.nativeSampleRate);
+        await this._transcribe(wavBlob);
 
         this.state.isProcessing = false;
         if (this.elements.timer) {
@@ -365,18 +446,12 @@ class WhisperWidget {
         this._drawIdle();
     }
 
-    async _transcribe(audioBlob) {
+    async _transcribe(wavBlob) {
         this._emit('processing');
 
         try {
             const formData = new FormData();
-
-            let extension = 'webm';
-            if (audioBlob.type.includes('ogg')) extension = 'ogg';
-            else if (audioBlob.type.includes('mp4')) extension = 'mp4';
-            else if (audioBlob.type.includes('wav')) extension = 'wav';
-
-            formData.append('file', audioBlob, `recording.${extension}`);
+            formData.append('file', wavBlob, 'recording.wav');
 
             const response = await fetch(this.options.serverUrl, {
                 method: 'POST',
@@ -407,6 +482,89 @@ class WhisperWidget {
             console.error('WhisperWidget: Transcription error:', err);
             this._showError(`Transcription failed: ${err.message}`);
         }
+    }
+
+    async _resample(pcmData, fromSampleRate, toSampleRate) {
+        // Create an AudioBuffer from the PCM data
+        const audioContext = new OfflineAudioContext(1, pcmData.length, fromSampleRate);
+        const audioBuffer = audioContext.createBuffer(1, pcmData.length, fromSampleRate);
+        audioBuffer.copyToChannel(pcmData, 0);
+
+        // Create an offline context for resampling
+        const duration = pcmData.length / fromSampleRate;
+        const outputLength = Math.ceil(duration * toSampleRate);
+        const offlineContext = new OfflineAudioContext(1, outputLength, toSampleRate);
+
+        const source = offlineContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(offlineContext.destination);
+        source.start();
+
+        const resampled = await offlineContext.startRendering();
+        return resampled.getChannelData(0);
+    }
+
+    async _pcmDataToWav(pcmChunks, nativeSampleRate) {
+        // Flatten all PCM chunks into a single array
+        let totalLength = 0;
+        for (const chunk of pcmChunks) {
+            totalLength += chunk.length;
+        }
+
+        let pcmData = new Float32Array(totalLength);
+        let offset = 0;
+        for (const chunk of pcmChunks) {
+            pcmData.set(chunk, offset);
+            offset += chunk.length;
+        }
+
+        // Resample to 16kHz if needed
+        const targetSampleRate = 16000;
+        if (nativeSampleRate !== targetSampleRate) {
+            pcmData = await this._resample(pcmData, nativeSampleRate, targetSampleRate);
+        }
+
+        // Convert to 16-bit PCM WAV
+        const numberOfChannels = 1;
+        const bitDepth = 16;
+        const bytesPerSample = bitDepth / 8;
+        const blockAlign = numberOfChannels * bytesPerSample;
+        const dataLength = pcmData.length * bytesPerSample;
+        const sampleRate = targetSampleRate;
+
+        const buffer = new ArrayBuffer(44 + dataLength);
+        const view = new DataView(buffer);
+
+        // WAV header
+        const writeString = (offset, string) => {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        };
+
+        writeString(0, 'RIFF');
+        view.setUint32(4, 36 + dataLength, true);
+        writeString(8, 'WAVE');
+        writeString(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true); // PCM
+        view.setUint16(22, numberOfChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * blockAlign, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitDepth, true);
+        writeString(36, 'data');
+        view.setUint32(40, dataLength, true);
+
+        // Convert float32 PCM to int16
+        let writeOffset = 44;
+        for (let i = 0; i < pcmData.length; i++) {
+            const sample = Math.max(-1, Math.min(1, pcmData[i]));
+            view.setInt16(writeOffset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+            writeOffset += 2;
+        }
+
+        return new Blob([buffer], { type: 'audio/wav' });
     }
 
     _displayOutput(text) {
