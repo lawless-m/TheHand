@@ -38,6 +38,13 @@ pub struct AudioConfig {
     pub silence_duration: f32,
     /// Minimum speech duration to avoid false triggers (seconds)
     pub min_speech_duration: f32,
+    /// Pre-buffer duration in milliseconds to capture audio before voice detection
+    #[serde(default = "default_pre_buffer_ms")]
+    pub pre_buffer_ms: f32,
+}
+
+fn default_pre_buffer_ms() -> f32 {
+    300.0
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,6 +77,7 @@ impl Default for Config {
                 silence_threshold: 0.01,
                 silence_duration: 2.0,
                 min_speech_duration: 0.5,
+                pre_buffer_ms: 300.0,
             },
             ui: UiConfig {
                 history_limit: 50,

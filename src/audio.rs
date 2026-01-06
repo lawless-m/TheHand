@@ -496,6 +496,12 @@ struct CaptureState {
     recording: bool,
     /// Buffer for recorded samples
     buffer: Vec<f32>,
+    /// Pre-buffer for capturing audio before voice detection (ring buffer)
+    pre_buffer: Vec<f32>,
+    /// Current position in pre-buffer (for ring buffer behavior)
+    pre_buffer_pos: usize,
+    /// Pre-buffer capacity in samples
+    pre_buffer_capacity: usize,
     /// Time when silence was first detected
     silence_start: Option<Instant>,
     /// Time when recording started
@@ -512,6 +518,8 @@ struct CaptureState {
     sample_rate: u32,
     /// Event sender
     event_tx: Sender<AudioEvent>,
+    /// Last audio update time (for watchdog)
+    last_audio_time: Arc<Mutex<Instant>>,
 }
 
 impl CaptureState {
@@ -521,11 +529,20 @@ impl CaptureState {
         silence_duration: f32,
         min_speech_duration: f32,
         sample_rate: u32,
+        pre_buffer_duration_ms: f32,
         event_tx: Sender<AudioEvent>,
+        last_audio_time: Arc<Mutex<Instant>>,
     ) -> Self {
+        // Pre-buffer to capture audio before voice detection
+        // This prevents clipping the start of speech
+        let pre_buffer_capacity = (sample_rate as f32 * pre_buffer_duration_ms / 1000.0) as usize;
+
         Self {
             recording: false,
             buffer: Vec::new(),
+            pre_buffer: vec![0.0; pre_buffer_capacity],
+            pre_buffer_pos: 0,
+            pre_buffer_capacity,
             silence_start: None,
             recording_start: None,
             voice_threshold,
@@ -534,10 +551,16 @@ impl CaptureState {
             min_speech_duration,
             sample_rate,
             event_tx,
+            last_audio_time,
         }
     }
 
     fn process_samples(&mut self, samples: &[f32]) {
+        // Update watchdog timestamp
+        if let Ok(mut last_time) = self.last_audio_time.lock() {
+            *last_time = Instant::now();
+        }
+
         // Calculate RMS
         let rms = calculate_rms(samples);
 
@@ -552,14 +575,28 @@ impl CaptureState {
 
         // State machine logic
         if !self.recording {
-            // Not recording - check for voice activity
+            // Not recording - add samples to pre-buffer (ring buffer)
+            for &sample in samples {
+                self.pre_buffer[self.pre_buffer_pos] = sample;
+                self.pre_buffer_pos = (self.pre_buffer_pos + 1) % self.pre_buffer_capacity;
+            }
+
+            // Check for voice activity
             if rms > self.voice_threshold {
-                // Voice detected!
+                // Voice detected! Start recording with pre-buffer content
                 self.recording = true;
                 self.recording_start = Some(Instant::now());
                 self.silence_start = None;
                 self.buffer.clear();
+
+                // Copy pre-buffer in correct order (from oldest to newest)
+                // The pre_buffer_pos points to the next write position, so it's the oldest sample
+                self.buffer.extend_from_slice(&self.pre_buffer[self.pre_buffer_pos..]);
+                self.buffer.extend_from_slice(&self.pre_buffer[..self.pre_buffer_pos]);
+
+                // Add current samples
                 self.buffer.extend_from_slice(samples);
+
                 let _ = self.event_tx.send(AudioEvent::VoiceDetected);
                 let _ = self.event_tx.send(AudioEvent::RecordingStarted);
             }
@@ -601,12 +638,16 @@ impl CaptureState {
             return;
         }
 
+        debug_log("DEBUG: stop_recording called - saving WAV");
+
         // Save to temporary WAV file
         match self.save_wav() {
             Ok(path) => {
+                debug_log(&format!("DEBUG: WAV saved to {:?}", path));
                 let _ = self.event_tx.send(AudioEvent::RecordingStopped(path));
             }
             Err(e) => {
+                debug_log(&format!("DEBUG: Failed to save WAV: {}", e));
                 let _ = self.event_tx.send(AudioEvent::Error(format!("Failed to save audio: {}", e)));
             }
         }
@@ -618,6 +659,7 @@ impl CaptureState {
     }
 
     fn cancel_recording(&mut self) {
+        debug_log("DEBUG: cancel_recording called - speech too short");
         self.recording = false;
         self.buffer.clear();
         self.silence_start = None;
@@ -673,6 +715,7 @@ pub struct AudioCapture {
     stream: Stream,
     event_rx: Receiver<AudioEvent>,
     state: Arc<Mutex<CaptureState>>,
+    last_audio_time: Arc<Mutex<Instant>>,
 }
 
 impl AudioCapture {
@@ -683,6 +726,7 @@ impl AudioCapture {
         silence_duration: f32,
         min_speech_duration: f32,
         sample_rate: u32,
+        pre_buffer_ms: f32,
         device_index: Option<usize>,
         device_name: Option<String>, // Raw ALSA device name for manually-added devices
     ) -> Result<Self> {
@@ -711,8 +755,14 @@ impl AudioCapture {
         // Use the actual sample rate from the config (device's native rate)
         let actual_sample_rate = config.sample_rate.0;
 
+        // Log which device we're ACTUALLY opening
+        let actual_device_name = device.name().unwrap_or_else(|_| "unknown".to_string());
+        eprintln!("=== ACTUALLY OPENING DEVICE: {} ===", actual_device_name);
+        debug_log(&format!("DEBUG: ACTUALLY OPENING: {}", actual_device_name));
         debug_log(&format!("DEBUG: Opening device with config: sample_rate={}, channels={}",
                  actual_sample_rate, config.channels));
+
+        let last_audio_time = Arc::new(Mutex::new(Instant::now()));
 
         let state = Arc::new(Mutex::new(CaptureState::new(
             voice_threshold,
@@ -720,7 +770,9 @@ impl AudioCapture {
             silence_duration,
             min_speech_duration,
             actual_sample_rate,
+            pre_buffer_ms,
             event_tx.clone(),
+            last_audio_time.clone(),
         )));
 
         let stream = Self::build_stream(&device, &config, state.clone())?;
@@ -730,7 +782,17 @@ impl AudioCapture {
             stream,
             event_rx,
             state,
+            last_audio_time,
         })
+    }
+
+    /// Check if audio stream is healthy (receiving data)
+    pub fn is_healthy(&self) -> bool {
+        if let Ok(last_time) = self.last_audio_time.lock() {
+            last_time.elapsed().as_secs() < 5 // No audio for 5 seconds = dead
+        } else {
+            false
+        }
     }
 
     /// Get audio stream configuration
@@ -740,8 +802,19 @@ impl AudioCapture {
 
         let mut config = supported_config.config();
 
-        // Use requested sample rate (16kHz for Whisper)
-        config.sample_rate = cpal::SampleRate(requested_sample_rate);
+        // For raw hw: devices, we MUST use the native sample rate
+        // Only plughw: or pipewire devices support sample rate conversion
+        let is_raw_hw_device = device.name()
+            .map(|name| name.starts_with("hw:") && !name.starts_with("plughw:"))
+            .unwrap_or(false);
+
+        if !is_raw_hw_device {
+            // Use requested sample rate for devices that support conversion
+            config.sample_rate = cpal::SampleRate(requested_sample_rate);
+            debug_log(&format!("DEBUG: Using requested sample rate: {}", requested_sample_rate));
+        } else {
+            debug_log(&format!("DEBUG: Using native sample rate {} for raw hw: device", config.sample_rate.0));
+        }
 
         // Check if this is a USB device that might need mono
         // Force mono for hw:/plughw: devices (not pipewire/default)

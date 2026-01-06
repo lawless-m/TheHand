@@ -128,6 +128,7 @@ fn run_app(config: Config) -> Result<()> {
         config.audio.silence_duration,
         config.audio.min_speech_duration,
         config.audio.sample_rate,
+        config.audio.pre_buffer_ms,
         None,
         Some(jabra_device_name),
     )?;
@@ -226,6 +227,7 @@ fn main_loop(
                                     config.audio.silence_duration,
                                     config.audio.min_speech_duration,
                                     config.audio.sample_rate,
+                                    config.audio.pre_buffer_ms,
                                     None, // Always use device_name, not index
                                     selected_device.device_name.clone(),
                                 ) {
