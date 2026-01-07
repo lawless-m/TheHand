@@ -404,8 +404,7 @@ thehand  # Should auto-fallback if server unavailable
 
 ## Tested Environments
 
-- Pop!_OS (GNOME)
-- i3wm
+- Debian with i3wm
 - Other Linux distros with X11 should work
 
 **Note:** Currently only X11 is supported. Wayland support may require additional configuration.
