@@ -755,10 +755,6 @@ impl AudioCapture {
         // Use the actual sample rate from the config (device's native rate)
         let actual_sample_rate = config.sample_rate.0;
 
-        // Log which device we're ACTUALLY opening
-        let actual_device_name = device.name().unwrap_or_else(|_| "unknown".to_string());
-        eprintln!("=== ACTUALLY OPENING DEVICE: {} ===", actual_device_name);
-        debug_log(&format!("DEBUG: ACTUALLY OPENING: {}", actual_device_name));
         debug_log(&format!("DEBUG: Opening device with config: sample_rate={}, channels={}",
                  actual_sample_rate, config.channels));
 
@@ -816,16 +812,9 @@ impl AudioCapture {
             debug_log(&format!("DEBUG: Using native sample rate {} for raw hw: device", config.sample_rate.0));
         }
 
-        // Check if this is a USB device that might need mono
-        // Force mono for hw:/plughw: devices (not pipewire/default)
-        if let Ok(device_name) = device.name() {
-            debug_log(&format!("DEBUG: Checking device name for mono: {}", device_name));
-            if (device_name.starts_with("hw:") || device_name.starts_with("plughw:"))
-               && (device_name.contains("LINK") || device_name.contains("CARD=Audio")) {
-                config.channels = 1;
-                debug_log(&format!("DEBUG: Forcing mono for USB device: {}", device_name));
-            }
-        }
+        // Always force mono for speech recognition (Whisper expects mono)
+        config.channels = 1;
+        debug_log("DEBUG: Forcing mono for speech recognition");
 
         debug_log(&format!("DEBUG: Using config: sample_rate={}, channels={}",
                           config.sample_rate.0, config.channels));

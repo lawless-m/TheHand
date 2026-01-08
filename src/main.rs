@@ -115,13 +115,12 @@ fn run_app(config: Config) -> Result<()> {
         }
     }
 
-    // Skip device enumeration on startup to avoid headphone noise
-    // Use AB13X USB Audio device for direct ALSA access
-    let jabra_device_name = "hw:CARD=Audio,DEV=0".to_string();
-    app.current_device_name = "AB13X USB Audio".to_string();
-    app.current_raw_device_name = Some(jabra_device_name.clone());
+    // Use default audio input device (pipewire-alsa handles routing)
+    // User can switch devices via F3 if needed
+    app.current_device_name = "Default".to_string();
+    app.current_raw_device_name = None;
 
-    // Initialize audio capture directly with Jabra
+    // Initialize audio capture with default device
     let mut audio = AudioCapture::new(
         config.audio.voice_threshold,
         config.audio.silence_threshold,
@@ -130,7 +129,7 @@ fn run_app(config: Config) -> Result<()> {
         config.audio.sample_rate,
         config.audio.pre_buffer_ms,
         None,
-        Some(jabra_device_name),
+        None,
     )?;
 
     // Setup signal handler for SIGUSR1 (toggle mute)
