@@ -51,6 +51,30 @@ pub fn filter_path() -> Result<PathBuf> {
     Ok(PathBuf::from(home).join(".config/thehand/filtered.txt"))
 }
 
+/// Add a single phrase to the filter file
+pub fn add_filtered_phrase(phrase: &str) -> Result<()> {
+    let filter_path = filter_path()?;
+
+    // Create parent directory if it doesn't exist
+    if let Some(parent) = filter_path.parent() {
+        fs::create_dir_all(parent)
+            .context(format!("Failed to create config directory at {:?}", parent))?;
+    }
+
+    // Append the phrase to the file
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&filter_path)
+        .context(format!("Failed to open filter file at {:?}", filter_path))?;
+
+    writeln!(file, "{}", phrase)
+        .context("Failed to write to filter file")?;
+
+    Ok(())
+}
+
 /// Default filtered phrases (common Whisper hallucinations)
 fn default_filtered_phrases() -> Vec<String> {
     vec![

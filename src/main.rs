@@ -116,7 +116,6 @@ fn run_app(config: Config) -> Result<()> {
     }
 
     // Use default audio input device (pipewire-alsa handles routing)
-    // User can switch devices via F3 if needed
     app.current_device_name = "Default".to_string();
     app.current_raw_device_name = None;
 
@@ -166,8 +165,6 @@ fn main_loop(
     toggle_mute_flag: Arc<AtomicBool>,
 ) -> Result<()> {
     let mut pending_transcription: Option<PathBuf> = None;
-    let mut device_preview: Option<audio::DevicePreview> = None;
-    let mut last_preview_device: Option<usize> = None;
 
     loop {
         // Check if signal handler wants to toggle mute
@@ -176,31 +173,6 @@ fn main_loop(
             app.toggle_mute();
         }
 
-        // Update device preview level if in device selection mode
-        if app.state == AppState::DeviceSelection {
-            let current_device = app.available_devices.get(app.selected_device_index).cloned();
-
-            // Create or recreate preview if device changed
-            let current_device_index = current_device.as_ref().map(|d| d.index);
-            if current_device_index != last_preview_device {
-                device_preview = current_device.and_then(|device| {
-                    let idx = if device.index == usize::MAX { None } else { Some(device.index) };
-                    audio::DevicePreview::new(idx, device.device_name, config.audio.sample_rate).ok()
-                });
-                last_preview_device = current_device_index;
-            }
-
-            // Update preview level
-            if let Some(ref preview) = device_preview {
-                app.update_preview_level(preview.get_level());
-            }
-        } else {
-            // Clean up preview when not in device selection mode
-            if device_preview.is_some() {
-                device_preview = None;
-                last_preview_device = None;
-            }
-        }
 
         // Draw UI
         terminal.draw(|f| ui::render(f, app))?;
@@ -208,161 +180,127 @@ fn main_loop(
         // Handle keyboard events (non-blocking)
         if event::poll(Duration::from_millis(50))? {
             if let Event::Key(key) = event::read()? {
-                // Handle device selection mode
-                if app.state == AppState::DeviceSelection {
-                    match key.code {
-                        KeyCode::Up => {
-                            app.select_previous_device();
-                        }
-                        KeyCode::Down => {
-                            app.select_next_device();
-                        }
-                        KeyCode::Enter => {
-                            // Switch to selected device
-                            if let Some(selected_device) = app.available_devices.get(app.selected_device_index).cloned() {
-                                match AudioCapture::new(
-                                    config.audio.voice_threshold,
-                                    config.audio.silence_threshold,
-                                    config.audio.silence_duration,
-                                    config.audio.min_speech_duration,
-                                    config.audio.sample_rate,
-                                    config.audio.pre_buffer_ms,
-                                    None, // Always use device_name, not index
-                                    selected_device.device_name.clone(),
-                                ) {
-                                    Ok(new_audio) => {
-                                        *audio = new_audio;
-                                        app.current_device_index = Some(selected_device.index);
-                                        app.current_device_name = selected_device.name.clone();
-                                        app.current_raw_device_name = selected_device.device_name.clone();
-                                        app.set_state(AppState::Idle);
+                // Quit on Esc, Ctrl+Q, or F12
+                if matches!(key.code, KeyCode::Esc | KeyCode::F(12))
+                    || (matches!(key.code, KeyCode::Char('q') | KeyCode::Char('Q'))
+                        && key.modifiers.contains(KeyModifiers::CONTROL))
+                {
+                    app.should_quit = true;
+                    break;
+                }
+
+                // Toggle mute on Ctrl+M or F1
+                if matches!(key.code, KeyCode::F(1))
+                    || (matches!(key.code, KeyCode::Char('m') | KeyCode::Char('M'))
+                        && key.modifiers.contains(KeyModifiers::CONTROL))
+                {
+                    app.toggle_mute();
+                }
+
+                // Cancel recording on Ctrl+C or F2
+                if matches!(key.code, KeyCode::F(2))
+                    || (matches!(key.code, KeyCode::Char('c') | KeyCode::Char('C'))
+                        && key.modifiers.contains(KeyModifiers::CONTROL))
+                {
+                    if audio.is_recording() {
+                        audio.cancel_recording();
+                        app.set_state(AppState::Idle);
+                    }
+                }
+
+                // Add last transcription to filter on F3
+                if matches!(key.code, KeyCode::F(3)) {
+                    if let Some(last_entry) = app.history.front() {
+                        // Normalize the text (lowercase, remove trailing punctuation)
+                        let normalized = last_entry.text
+                            .trim()
+                            .trim_end_matches(&['.', '!', '?', ','][..])
+                            .to_lowercase();
+
+                        match filter::add_filtered_phrase(&normalized) {
+                            Ok(()) => {
+                                // Reload filters
+                                match filter::load_filtered_phrases() {
+                                    Ok(phrases) => {
+                                        app.filtered_phrases = phrases;
+                                        app.add_to_history(format!("[System] Added to filter: {}", normalized));
                                     }
                                     Err(e) => {
-                                        app.set_error(format!("Failed to switch device: {}", e));
-                                        app.set_state(AppState::Idle);
+                                        app.set_error(format!("Failed to reload filters: {}", e));
                                     }
                                 }
                             }
-                        }
-                        KeyCode::Esc | KeyCode::F(3) => {
-                            // Cancel device selection
-                            app.set_state(AppState::Idle);
-                        }
-                        KeyCode::F(12) => {
-                            // Allow quit even in device selection mode
-                            app.should_quit = true;
-                            break;
-                        }
-                        _ => {}
-                    }
-                } else {
-                    // Normal mode keybindings
-                    // Quit on Esc, Ctrl+Q, or F12
-                    if matches!(key.code, KeyCode::Esc | KeyCode::F(12))
-                        || (matches!(key.code, KeyCode::Char('q') | KeyCode::Char('Q'))
-                            && key.modifiers.contains(KeyModifiers::CONTROL))
-                    {
-                        app.should_quit = true;
-                        break;
-                    }
-
-                    // Toggle mute on Ctrl+M or F1
-                    if matches!(key.code, KeyCode::F(1))
-                        || (matches!(key.code, KeyCode::Char('m') | KeyCode::Char('M'))
-                            && key.modifiers.contains(KeyModifiers::CONTROL))
-                    {
-                        app.toggle_mute();
-                    }
-
-                    // Cancel recording on Ctrl+C or F2
-                    if matches!(key.code, KeyCode::F(2))
-                        || (matches!(key.code, KeyCode::Char('c') | KeyCode::Char('C'))
-                            && key.modifiers.contains(KeyModifiers::CONTROL))
-                    {
-                        if audio.is_recording() {
-                            audio.cancel_recording();
-                            app.set_state(AppState::Idle);
-                        }
-                    }
-
-                    // Toggle device selection on F3
-                    if matches!(key.code, KeyCode::F(3)) {
-                        match audio::list_input_devices() {
-                            Ok(devices) => {
-                                app.set_available_devices(devices);
-                                app.set_state(AppState::DeviceSelection);
-                            }
                             Err(e) => {
-                                app.set_error(format!("Failed to list devices: {}", e));
+                                app.set_error(format!("Failed to add filter: {}", e));
                             }
+                        }
+                    } else {
+                        app.set_error("No transcription to filter".to_string());
+                    }
+                }
+
+                // Reload voice commands and filters on F4
+                if matches!(key.code, KeyCode::F(4)) {
+                    let mut reload_messages = Vec::new();
+
+                    match commands_config::CommandsFile::load() {
+                        Ok(commands_file) => {
+                            app.wake_word = commands_file.wake_word;
+                            app.voice_commands = commands_file.actions;
+                            reload_messages.push("commands");
+                        }
+                        Err(e) => {
+                            app.set_error(format!("Failed to reload commands: {}", e));
                         }
                     }
 
-                    // Reload voice commands and filters on F4
-                    if matches!(key.code, KeyCode::F(4)) {
-                        let mut reload_messages = Vec::new();
-
-                        match commands_config::CommandsFile::load() {
-                            Ok(commands_file) => {
-                                app.wake_word = commands_file.wake_word;
-                                app.voice_commands = commands_file.actions;
-                                reload_messages.push("commands");
-                            }
-                            Err(e) => {
-                                app.set_error(format!("Failed to reload commands: {}", e));
-                            }
+                    match filter::load_filtered_phrases() {
+                        Ok(phrases) => {
+                            app.filtered_phrases = phrases;
+                            reload_messages.push("filters");
                         }
-
-                        match filter::load_filtered_phrases() {
-                            Ok(phrases) => {
-                                app.filtered_phrases = phrases;
-                                reload_messages.push("filters");
-                            }
-                            Err(e) => {
-                                app.set_error(format!("Failed to reload filters: {}", e));
-                            }
+                        Err(e) => {
+                            app.set_error(format!("Failed to reload filters: {}", e));
                         }
+                    }
 
-                        if !reload_messages.is_empty() {
-                            app.add_to_history(format!("[System] Reloaded: {}", reload_messages.join(", ")));
-                        }
+                    if !reload_messages.is_empty() {
+                        app.add_to_history(format!("[System] Reloaded: {}", reload_messages.join(", ")));
                     }
                 }
             }
         }
 
-        // Handle audio events (skip if in device selection mode)
-        if app.state != AppState::DeviceSelection {
-            while let Some(event) = audio.poll_event() {
-                match event {
-                    AudioEvent::Level(level) => {
-                        if app.state != AppState::Muted {
-                            app.update_audio_level(level);
-                        }
+        // Handle audio events
+        while let Some(event) = audio.poll_event() {
+            match event {
+                AudioEvent::Level(level) => {
+                    if app.state != AppState::Muted {
+                        app.update_audio_level(level);
                     }
-                    AudioEvent::VoiceDetected => {
-                        if app.state != AppState::Muted {
-                            app.clear_error();
-                        }
+                }
+                AudioEvent::VoiceDetected => {
+                    if app.state != AppState::Muted {
+                        app.clear_error();
                     }
-                    AudioEvent::RecordingStarted => {
-                        if app.state != AppState::Muted {
-                            app.set_state(AppState::Recording);
-                        }
+                }
+                AudioEvent::RecordingStarted => {
+                    if app.state != AppState::Muted {
+                        app.set_state(AppState::Recording);
                     }
-                    AudioEvent::RecordingStopped(path) => {
-                        if app.state != AppState::Muted {
-                            app.set_state(AppState::Transcribing);
-                            pending_transcription = Some(path);
-                        }
+                }
+                AudioEvent::RecordingStopped(path) => {
+                    if app.state != AppState::Muted {
+                        app.set_state(AppState::Transcribing);
+                        pending_transcription = Some(path);
                     }
-                    AudioEvent::SilenceDetected => {
-                        // Just for informational purposes
-                    }
-                    AudioEvent::Error(msg) => {
-                        app.set_error(msg);
-                        app.set_state(AppState::Idle);
-                    }
+                }
+                AudioEvent::SilenceDetected => {
+                    // Just for informational purposes
+                }
+                AudioEvent::Error(msg) => {
+                    app.set_error(msg);
+                    app.set_state(AppState::Idle);
                 }
             }
         }
@@ -375,10 +313,31 @@ fn main_loop(
             ) {
                 Ok(text) => {
                     // Filter out common Whisper hallucinations
-                    let trimmed = text.trim();
-                    let is_spurious = app.filtered_phrases
+                    // Split by newlines and check if all non-empty lines are filtered
+                    let lines: Vec<String> = text
+                        .lines()
+                        .map(|line| {
+                            // Trim whitespace and trailing punctuation, convert to lowercase
+                            line.trim()
+                                .trim_end_matches(&['.', '!', '?', ','][..])
+                                .to_lowercase()
+                        })
+                        .filter(|line| !line.is_empty())
+                        .collect();
+
+                    // Normalize filter phrases to lowercase without trailing punctuation
+                    let normalized_filters: Vec<String> = app.filtered_phrases
                         .iter()
-                        .any(|phrase| phrase == trimmed);
+                        .map(|phrase| {
+                            phrase.trim()
+                                .trim_end_matches(&['.', '!', '?', ','][..])
+                                .to_lowercase()
+                        })
+                        .collect();
+
+                    let is_spurious = !lines.is_empty() && lines
+                        .iter()
+                        .all(|line| normalized_filters.contains(line));
 
                     if is_spurious {
                         // Ignore spurious hallucinations, just return to idle

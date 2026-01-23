@@ -16,8 +16,6 @@ pub enum AppState {
     Typing,
     /// Voice detection disabled
     Muted,
-    /// Selecting audio input device
-    DeviceSelection,
 }
 
 impl AppState {
@@ -28,7 +26,6 @@ impl AppState {
             AppState::Transcribing => "Transcribing...",
             AppState::Typing => "Sent ✓",
             AppState::Muted => "MUTED",
-            AppState::DeviceSelection => "Select Audio Device",
         }
     }
 
@@ -40,7 +37,6 @@ impl AppState {
             AppState::Transcribing => Color::Yellow,
             AppState::Typing => Color::Green,
             AppState::Muted => Color::DarkGray,
-            AppState::DeviceSelection => Color::Cyan,
         }
     }
 }
